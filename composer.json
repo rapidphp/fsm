@@ -1,0 +1,35 @@
+{
+    "name": "rapid/fsm",
+    "description": "Laravel Plus+",
+    "type": "library",
+    "require": {
+        "laravel/framework": "^11.1"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Rapid\\Fsm\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Rapid\\Fsm\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Mahdi Saremi",
+            "email": "mahdisarmi00@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "FsmServiceProvider"
+            ]
+        }
+    }
+}
