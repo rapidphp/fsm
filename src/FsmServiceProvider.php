@@ -2,7 +2,6 @@
 
 namespace Rapid\Fsm;
 
-use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\ServiceProvider;
 
 class FsmServiceProvider extends ServiceProvider

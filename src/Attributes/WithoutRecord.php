@@ -5,6 +5,7 @@ namespace Rapid\Fsm\Attributes;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_METHOD)]
-class Edge
+class WithoutRecord
 {
+
 }
