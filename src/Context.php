@@ -3,6 +3,7 @@
 namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\OverrideApi;
 use Rapid\Fsm\Contracts\ContextAttributeContract;
@@ -10,6 +11,7 @@ use Rapid\Fsm\Traits\HasEvents;
 
 /**
  * @template T of Model
+ * @extends State<T>
  */
 class Context extends State
 {
@@ -44,36 +46,13 @@ class Context extends State
         }
     }
 
-    public static function defineRoutes(): void
+    public static function defineRoutes(?Router $router = null): void
     {
         static::bootIfNotBooted();
 
-        (new RouteRegistrar(static::class))->register();
+        (new RouteRegistrar(static::class, $router ?? app('router')))->register();
     }
 
-
-    /**
-     * @var T
-     */
-    public Model $record;
-
-    public function setRecord(Model $record): void
-    {
-        $this->record = $record;
-    }
-
-    /**
-     * @param array $attributes
-     * @return T
-     */
-    public function createRecord(array $attributes): Model
-    {
-        $this->setRecord(
-            $record = static::model()::create($attributes),
-        );
-
-        return $record;
-    }
 
     public function getCurrentState(): ?State
     {
@@ -91,15 +70,21 @@ class Context extends State
     }
 
     /**
-     * @inheritDoc
+     * @template V
+     * @param null|class-string<V> $state
+     * @return null|State|V
      */
     public function transitionTo(?string $state): ?State
     {
+        $this->getCurrentState()?->onLeave();
+
         $this->record->update([
             'current_state' => $state,
         ]);
 
         StateMapper::resetStateFor($this->record);
+
+        $this->getCurrentState()?->onEnter();
 
         return $this->getCurrentState();
     }
@@ -155,16 +140,6 @@ class Context extends State
     public static function withMiddleware(): array
     {
         return [];
-    }
-
-    protected static string $model;
-
-    /**
-     * @return null|class-string<T>|class-string<Model>
-     */
-    public static function model(): ?string
-    {
-        return static::$model ?? null;
     }
 
     public static function getBaseUri(): string

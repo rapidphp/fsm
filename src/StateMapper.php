@@ -48,10 +48,8 @@ final class StateMapper
         return app($class);
     }
 
-    public static function newContext(string $alias): ?Context
+    public static function newContext(string $class): ?Context
     {
-        $class = self::getClass($alias);
-
         if (!class_exists($class) || !is_a($class, Context::class, true)) {
             return null;
         }
@@ -67,8 +65,7 @@ final class StateMapper
             return self::$contexts->offsetGet($record);
         }
 
-        /** @var Context $context */
-        $context = app($class);
+        $context = self::newContext($class);
         $context->setRecord($record);
 
         self::$contexts->offsetSet($record, $context);
@@ -84,14 +81,13 @@ final class StateMapper
             return self::$states->offsetGet($record);
         }
 
-        $class = self::getClass($alias);
+        $state = self::newState($alias);
 
-        if (!class_exists($class) || !is_a($class, State::class, true)) {
+        if ($state === null) {
             return null;
         }
 
-        $state = app($class);
-        $state->setContext($context);
+        $state->setParent($context);
 
         self::$states->offsetSet($record, $state);
 

@@ -2,10 +2,9 @@
 
 namespace Rapid\Fsm;
 
-use Illuminate\Support\Facades\Route;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\Api;
-use Rapid\Fsm\Attributes\OverrideApi;
 use Rapid\Fsm\Attributes\WithMiddleware;
 use Rapid\Fsm\Attributes\WithoutRecord;
 
@@ -14,6 +13,7 @@ class RouteRegistrar
     public function __construct(
         /** @var class-string<Context> */
         public string $context,
+        public Router $router,
     )
     {
     }
@@ -47,7 +47,7 @@ class RouteRegistrar
         $middlewares = $this->getApiMiddlewares($method, $api);
 
         /** @var \Illuminate\Routing\Route $route */
-        $route = Route::{$api->method}($uri, [$this->context, 'invokeRoute']);
+        $route = $this->router->{$api->method}($uri, [$this->context, 'invokeRoute']);
 
         $route
             ->middleware($middlewares)
@@ -64,7 +64,7 @@ class RouteRegistrar
         $middlewares = $this->getApiMiddlewares($method, $api);
 
         /** @var \Illuminate\Routing\Route $route */
-        $route = Route::{$api->method}($uri, [$this->context, 'invokeRoute']);
+        $route = $this->router->{$api->method}($uri, [$this->context, 'invokeRoute']);
 
         $route
             ->middleware($middlewares)
