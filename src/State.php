@@ -32,7 +32,7 @@ class State
      */
     public function createRecord(array $attributes): Model
     {
-        if ($this instanceof Context && isset($this->parent->record)) {
+        if (isset($this->parent->record)) {
             $attributes['parent_type'] = $this->parent->record->getMorphClass();
             $attributes['parent_id'] = $this->parent->record->getKey();
         }
@@ -41,7 +41,7 @@ class State
             $record = static::model()::create($attributes),
         );
 
-        if ($this instanceof Context && isset($this->parent->record)) {
+        if (isset($this->parent->record)) {
             $record->setRelation('parent', $this->parent->record);
         }
 
@@ -94,6 +94,14 @@ class State
     }
 
     public function onLeave(): void
+    {
+    }
+
+    public function onLoad(): void
+    {
+    }
+
+    public function onReload(): void
     {
     }
 }

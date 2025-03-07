@@ -105,8 +105,6 @@ class Context extends State
         $route->forgetParameter('withRecord');
         $route->forgetParameter('contextId');
 
-        // todo
-
         $container = isset($state) ? app($state) : $this;
 
         if (!isset($state) && $withRecord) {
@@ -123,6 +121,12 @@ class Context extends State
 
         if (!method_exists($container, $edge)) {
             abort(404);
+        }
+
+        $this->onLoad();
+
+        if ($withRecord) {
+            $this->onReload();
         }
 
         return app(CallableDispatcher::class)->dispatch($route, $container->$edge(...));
@@ -147,4 +151,10 @@ class Context extends State
         return 'fsm/' . Str::kebab(Str::beforeLast(class_basename(static::class), 'Context'));
     }
 
+    public function onReload(): void
+    {
+        parent::onReload();
+
+        $this->getCurrentState()?->onReload();
+    }
 }
