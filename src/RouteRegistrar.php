@@ -78,7 +78,7 @@ class RouteRegistrar
 
     protected function getApiUri(\ReflectionMethod $method, Api $api, ?bool &$withRecord = null): string
     {
-        $uri = $this->context::getBaseUri();
+        $uri = $this->context::baseUri();
 
         if ($withRecord = $this->context::model() !== null && !$method->getAttributes(WithoutRecord::class)) {
             $uri .= '/{contextId}';

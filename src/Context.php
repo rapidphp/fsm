@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\OverrideApi;
-use Rapid\Fsm\Contracts\ContextAttributeContract;
 use Rapid\Fsm\Traits\HasEvents;
 
 /**
@@ -16,6 +15,11 @@ use Rapid\Fsm\Traits\HasEvents;
 class Context extends State
 {
     use HasEvents;
+
+    public function __construct()
+    {
+        static::bootIfNotBooted();
+    }
 
     private static array $_booted = [];
 
@@ -35,15 +39,18 @@ class Context extends State
             }
         }
 
-        foreach ((new \ReflectionClass(static::class))->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-            foreach ($method->getAttributes(ContextAttributeContract::class) as $attribute) {
-                $attribute->newInstance()->boot(static::class, $method);
-            }
-        }
+        $bootStates = function (array $states) use (&$bootStates) {
+            /** @var State $state */
+            foreach ($states as $state) {
+                $state::bootOnContext(static::class);
 
-        foreach (static::states() as $state) {
-            $state::bootOnContext(static::class);
-        }
+                if (is_a($state, Context::class, true)) {
+                    $bootStates($state::states());
+                }
+            }
+        };
+
+        $bootStates(static::states());
     }
 
     public static function defineRoutes(?Router $router = null): void
@@ -69,6 +76,17 @@ class Context extends State
         return StateMapper::getStateFor($this->record, $this, $state);
     }
 
+    public function getCurrentDeepState(): ?State
+    {
+        $state = $this->getCurrentState();
+
+        if ($state instanceof Context) {
+            return $state->getCurrentDeepState() ?? $state;
+        }
+
+        return $state;
+    }
+
     /**
      * @template V
      * @param null|class-string<V> $state
@@ -92,8 +110,6 @@ class Context extends State
 
     public function invokeRoute(): mixed
     {
-        static::bootIfNotBooted();
-
         $route = request()->route();
         $parameters = $route->parameters();
         $state = $parameters['state'] ?? null;
@@ -110,13 +126,7 @@ class Context extends State
         if (!isset($state) && $withRecord) {
             $this->setRecord(static::model()::query()->findOrFail($contextId));
 
-            if (
-                ($currentState = $this->getCurrentState()) &&
-                method_exists($currentState, $edge) &&
-                (new \ReflectionMethod($currentState, $edge))->getAttributes(OverrideApi::class)
-            ) {
-                $container = $currentState;
-            }
+           $container = $this->getApiTargetClass($edge);
         }
 
         if (!method_exists($container, $edge)) {
@@ -130,6 +140,27 @@ class Context extends State
         }
 
         return app(CallableDispatcher::class)->dispatch($route, $container->$edge(...));
+    }
+
+    private function getApiTargetClass(string $name): object
+    {
+        if (!$state = $this->getCurrentState()) {
+            return $this;
+        }
+
+        if (!method_exists($state, $name)) {
+            return $this;
+        }
+
+        if ((new \ReflectionMethod($state, $name))->getAttributes(OverrideApi::class)) {
+            return $this;
+        }
+
+        if ($state instanceof Context) {
+            return $state->getApiTargetClass($name);
+        }
+
+        return $state;
     }
 
 
@@ -146,9 +177,9 @@ class Context extends State
         return [];
     }
 
-    public static function getBaseUri(): string
+    public static function baseUri(): string
     {
-        return 'fsm/' . Str::kebab(Str::beforeLast(class_basename(static::class), 'Context'));
+        return Str::kebab(Str::beforeLast(class_basename(static::class), 'Context'));
     }
 
     public function onReload(): void
