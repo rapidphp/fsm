@@ -4,13 +4,13 @@ namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\CallableDispatcher;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
-use Rapid\Fsm\Attributes\Api;
-use Rapid\Fsm\Attributes\WithoutRecord;
 use Rapid\Fsm\Contracts\ContextAttributeContract;
 use Rapid\Fsm\Traits\HasEvents;
 
+/**
+ * @template T of Model
+ */
 class Context extends State
 {
     use HasEvents;
@@ -52,12 +52,58 @@ class Context extends State
     }
 
 
+    /**
+     * @var T
+     */
     public Model $record;
 
     public function setRecord(Model $record): void
     {
         $this->record = $record;
     }
+
+    /**
+     * @param array $attributes
+     * @return T
+     */
+    public function createRecord(array $attributes): Model
+    {
+        $this->setRecord(
+            $record = static::model()::create($attributes),
+        );
+
+        return $record;
+    }
+
+    public function getCurrentState(): ?State
+    {
+        if (!isset($this->record)) {
+            return null;
+        }
+
+        $stateClass = $this->record->current_state;
+
+        if (is_null($stateClass) || !class_exists($stateClass) || !is_a($stateClass, State::class, true)) {
+            return null;
+        }
+
+        /** @var State $state */
+        $state = new $stateClass();
+        $state->setContext($this);
+
+        return $state;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function transitionTo(string $state): State
+    {
+        $this->record->state = $state;
+
+        return $this->record->state;
+    }
+
 
     public function invokeRoute(): mixed
     {
@@ -79,14 +125,14 @@ class Context extends State
         $container = isset($state) ? new $state : $this;
 
         if (!isset($state) && $withRecord) {
-
+            $this->setRecord(static::model()::query()->findOrFail($contextId));
         }
 
         if (!method_exists($container, $edge)) {
             abort(404);
         }
 
-        return app(CallableDispatcher::class)->dispatch($route, [isset($state) ? new $state : $this, $edge]);
+        return app(CallableDispatcher::class)->dispatch($route, $container->$edge(...));
     }
 
 
@@ -106,7 +152,7 @@ class Context extends State
     protected static string $model;
 
     /**
-     * @return null|class-string<Model>
+     * @return null|class-string<T>|class-string<Model>
      */
     public static function model(): ?string
     {
@@ -117,4 +163,5 @@ class Context extends State
     {
         return 'fsm/' . Str::kebab(Str::beforeLast(class_basename(static::class), 'Context'));
     }
+
 }

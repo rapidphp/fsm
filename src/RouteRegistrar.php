@@ -46,7 +46,10 @@ class RouteRegistrar
         $uri = $this->getApiUri($method, $api, $withRecord);
         $middlewares = $this->getApiMiddlewares($method, $api);
 
-        Route::addRoute($api->method, $uri, [$this->context, 'invokeRoute'])
+        /** @var \Illuminate\Routing\Route $route */
+        $route = Route::{$api->method}($uri, [$this->context, 'invokeRoute']);
+
+        $route
             ->middleware($middlewares)
             ->name($api->name) // todo
             ->setDefaults([
@@ -60,7 +63,10 @@ class RouteRegistrar
         $uri = $this->getApiUri($method, $api, $withRecord);
         $middlewares = $this->getApiMiddlewares($method, $api);
 
-        Route::addRoute($api->method, $uri, [$this->context, 'invokeRoute'])
+        /** @var \Illuminate\Routing\Route $route */
+        $route = Route::{$api->method}($uri, [$this->context, 'invokeRoute']);
+
+        $route
             ->middleware($middlewares)
             ->name($api->name) // todo
             ->setDefaults([
