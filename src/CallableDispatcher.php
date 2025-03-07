@@ -14,7 +14,7 @@ class CallableDispatcher extends \Illuminate\Routing\CallableDispatcher
     {
         $parameters = array_values($this->resolveParameters($route, $callable));
 
-        if ($attributes = (new \ReflectionMethod($callable))->getAttributes(IntoTransaction::class)) {
+        if ($attributes = (new \ReflectionFunction($callable))->getAttributes(IntoTransaction::class)) {
             /** @var IntoTransaction $intoTransaction */
             $intoTransaction = $attributes[0]->newInstance();
         } else {

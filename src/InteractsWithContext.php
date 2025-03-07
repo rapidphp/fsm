@@ -4,7 +4,6 @@ namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Arr;
 use Rapid\Laplus\Present\Present;
 
@@ -12,16 +11,17 @@ use Rapid\Laplus\Present\Present;
  * @property Context $context
  * @property State $state
  */
-trait HasContext
+trait InteractsWithContext
 {
+    use InteractsWithState;
+
     abstract protected function contextClass(): string;
 
-    public static function bootHasContext(): void
+    public static function bootInteractsWithContext(): void
     {
         if (method_exists(static::class, 'extendPresent')) {
             static::extendPresent(function (Present $present) {
                 $present->string('current_state')->nullable();
-                $present->morphs('parent')->nullable();
             });
         }
     }
@@ -43,11 +43,6 @@ trait HasContext
                 $this->context->transitionTo($value);
             },
         );
-    }
-
-    public function parent(): MorphTo
-    {
-        return $this->morphTo();
     }
 
     public static function scopeWhereStateIs(Builder $query, string $class): void
