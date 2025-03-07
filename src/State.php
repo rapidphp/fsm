@@ -61,6 +61,10 @@ class State
      */
     public function loadRecord(): ?Model
     {
+        if (static::model() === null) {
+            return null;
+        }
+
         $record = $this->parent->record->morphOne(static::model(), 'parent')->latest('id')->first();
 
         if ($record === null) {

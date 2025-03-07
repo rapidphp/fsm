@@ -89,6 +89,7 @@ final class StateMapper
         }
 
         $state->setParent($context);
+        $state->loadRecord();
         $state->onLoad();
 
         self::$states->offsetSet($record, $state);
