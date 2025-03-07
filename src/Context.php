@@ -3,8 +3,8 @@
 namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Routing\CallableDispatcher;
 use Illuminate\Support\Str;
+use Rapid\Fsm\Attributes\OverrideApi;
 use Rapid\Fsm\Contracts\ContextAttributeContract;
 use Rapid\Fsm\Traits\HasEvents;
 
@@ -122,10 +122,18 @@ class Context extends State
 
         // todo
 
-        $container = isset($state) ? new $state : $this;
+        $container = isset($state) ? app($state) : $this;
 
         if (!isset($state) && $withRecord) {
             $this->setRecord(static::model()::query()->findOrFail($contextId));
+
+            if (
+                ($currentState = $this->getCurrentState()) &&
+                method_exists($currentState, $edge) &&
+                (new \ReflectionMethod($currentState, $edge))->getAttributes(OverrideApi::class)
+            ) {
+                $container = $currentState;
+            }
         }
 
         if (!method_exists($container, $edge)) {

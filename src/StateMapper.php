@@ -45,7 +45,7 @@ final class StateMapper
             return null;
         }
 
-        return new $class();
+        return app($class);
     }
 
     public static function newContext(string $alias): ?Context
@@ -56,7 +56,7 @@ final class StateMapper
             return null;
         }
 
-        return new $class();
+        return app($class);
     }
 
     public static function getContextFor(Model $record, string $class): Context
@@ -68,7 +68,7 @@ final class StateMapper
         }
 
         /** @var Context $context */
-        $context = new $class;
+        $context = app($class);
         $context->setRecord($record);
 
         self::$contexts->offsetSet($record, $context);
@@ -90,7 +90,7 @@ final class StateMapper
             return null;
         }
 
-        $state = new $class;
+        $state = app($class);
         $state->setContext($context);
 
         self::$states->offsetSet($record, $state);
