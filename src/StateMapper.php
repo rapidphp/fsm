@@ -2,9 +2,16 @@
 
 namespace Rapid\Fsm;
 
+use Illuminate\Database\Eloquent\Model;
+use WeakMap;
+
 final class StateMapper
 {
     protected static array $map = [];
+
+    protected static WeakMap $contexts;
+
+    protected static WeakMap $states;
 
     public static function reset(): void
     {
@@ -50,5 +57,57 @@ final class StateMapper
         }
 
         return new $class();
+    }
+
+    public static function getContextFor(Model $record, string $class): Context
+    {
+        self::$contexts ??= new WeakMap();
+
+        if (self::$contexts->offsetExists($record)) {
+            return self::$contexts->offsetGet($record);
+        }
+
+        /** @var Context $context */
+        $context = new $class;
+        $context->setRecord($record);
+
+        self::$contexts->offsetSet($record, $context);
+
+        return $context;
+    }
+
+    public static function getStateFor(Model $record, Context $context, string $alias): ?State
+    {
+        self::$states ??= new WeakMap();
+
+        if (self::$states->offsetExists($record)) {
+            return self::$states->offsetGet($record);
+        }
+
+        $class = self::getClass($alias);
+
+        if (!class_exists($class) || !is_a($class, State::class, true)) {
+            return null;
+        }
+
+        $state = new $class;
+        $state->setContext($context);
+
+        self::$states->offsetSet($record, $state);
+
+        return $state;
+    }
+
+    public static function resetStateFor(Model $record, ?State $state = null): void
+    {
+        if (!isset(self::$states)) {
+            return;
+        }
+
+        if (isset($state)) {
+            self::$states->offsetUnset($record);
+        } else {
+            self::$states->offsetSet($record, $state);
+        }
     }
 }

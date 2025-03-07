@@ -15,10 +15,10 @@ class State
 
     /**
      * @template V
-     * @param class-string<V> $state
-     * @return State|V
+     * @param null|class-string<V> $state
+     * @return null|State|V
      */
-    public function transitionTo(string $state): State
+    public function transitionTo(?string $state): ?State
     {
         return $this->context->transitionTo($state);
     }

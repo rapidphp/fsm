@@ -81,27 +81,27 @@ class Context extends State
             return null;
         }
 
-        $stateClass = $this->record->current_state;
+        $state = $this->record->current_state;
 
-        if (is_null($stateClass) || !class_exists($stateClass) || !is_a($stateClass, State::class, true)) {
+        if (is_null($state)) {
             return null;
         }
 
-        /** @var State $state */
-        $state = new $stateClass();
-        $state->setContext($this);
-
-        return $state;
+        return StateMapper::getStateFor($this->record, $this, $state);
     }
 
     /**
      * @inheritDoc
      */
-    public function transitionTo(string $state): State
+    public function transitionTo(?string $state): ?State
     {
-        $this->record->state = $state;
+        $this->record->update([
+            'current_state' => $state,
+        ]);
 
-        return $this->record->state;
+        StateMapper::resetStateFor($this->record);
+
+        return $this->getCurrentState();
     }
 
 

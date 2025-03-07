@@ -13,7 +13,7 @@ use Rapid\Laplus\Present\Present;
  */
 trait HasContext
 {
-    protected string $contextClass;
+    abstract protected function contextClass(): string;
 
     public static function bootHasContext(): void
     {
@@ -27,12 +27,7 @@ trait HasContext
     public function context(): Attribute
     {
         return Attribute::get(function () {
-            /** @var Context $context */
-            $context = new $this->contextClass;
-
-            $context->setRecord($this);
-
-            return $context;
+            return StateMapper::getContextFor($this, $this->current_state);
         });
     }
 
@@ -42,8 +37,8 @@ trait HasContext
             get: function () {
                 return $this->context->getCurrentState();
             },
-            set: function ($value) {
-                $this->current_state = is_string($value) ? $value : get_class($value);
+            set: function (string $value) {
+                $this->context->transitionTo($value);
             },
         );
     }
