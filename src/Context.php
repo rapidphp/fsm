@@ -5,7 +5,9 @@ namespace Rapid\Fsm;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
+use Rapid\Fsm\Attributes\OnState;
 use Rapid\Fsm\Attributes\OverrideApi;
+use Rapid\Fsm\Support\Facades\Fsm;
 use Rapid\Fsm\Traits\HasEvents;
 
 /**
@@ -88,6 +90,20 @@ class Context extends State
     }
 
     /**
+     * @return State[]
+     */
+    public function getCurrentStateBuilding(): array
+    {
+        $building = [];
+        $state = $this->getCurrentState();
+
+        do $building[] = $state;
+        while (($state instanceof Context) && $state = $state->getCurrentState());
+
+        return $building;
+    }
+
+    /**
      * @template V
      * @param null|class-string<V> $state
      * @return null|State|V
@@ -126,7 +142,16 @@ class Context extends State
         if (!isset($state) && $withRecord) {
             $this->setRecord(static::model()::query()->findOrFail($contextId));
 
-           $container = $this->getApiTargetClass($edge);
+            if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
+                if ($onStates = $ref->getAttributes(OnState::class)) {
+                    /** @var OnState $onState */
+                    $onState = $onStates[0]->newInstance();
+
+                    Fsm::authorize($this, $onState->states);
+                }
+            }
+
+            $container = $this->getApiTargetClass($edge);
         }
 
         if (!method_exists($container, $edge)) {

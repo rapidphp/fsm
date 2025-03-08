@@ -1,21 +1,28 @@
 <?php
 
-namespace Rapid\Fsm;
+namespace Rapid\Fsm\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Arr;
+use Rapid\Fsm\Context;
+use Rapid\Fsm\State;
+use Rapid\Fsm\StateMapper;
 use Rapid\Laplus\Present\Present;
 
 /**
- * @property Context $context
- * @property State $state
+ * @property-read Context $context
+ * @property ?State $state
+ * @property-read ?State $deepState
  */
 trait InteractsWithContext
 {
     use InteractsWithState;
 
-    abstract protected function contextClass(): string;
+    protected function contextClass(): string
+    {
+        throw new \Exception("Method [contextClass] is not implemented on [" . static::class . "]");
+    }
 
     public static function bootInteractsWithContext(): void
     {
@@ -28,21 +35,28 @@ trait InteractsWithContext
 
     public function context(): Attribute
     {
-        return Attribute::get(function () {
-            return StateMapper::getContextFor($this, $this->current_state);
+        return Attribute::get(function (): Context {
+            return StateMapper::getContextFor($this, static::contextClass());
         });
     }
 
     public function state(): Attribute
     {
         return Attribute::make(
-            get: function () {
+            get: function (): ?State {
                 return $this->context->getCurrentState();
             },
             set: function (string $value) {
                 $this->context->transitionTo($value);
             },
         );
+    }
+
+    public function deepState(): Attribute
+    {
+        return Attribute::get(function (): ?State {
+            return $this->context->getCurrentDeepState();
+        });
     }
 
     public static function scopeWhereStateIs(Builder $query, string $class): void

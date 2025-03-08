@@ -1,6 +1,6 @@
 <?php
 
-namespace Rapid\Fsm;
+namespace Rapid\Fsm\Traits;
 
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Rapid\Laplus\Present\Present;
