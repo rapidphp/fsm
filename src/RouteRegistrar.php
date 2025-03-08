@@ -29,16 +29,7 @@ class RouteRegistrar
             }
         }
 
-        foreach ($this->context::states() as $state) {
-            foreach ((new \ReflectionClass($state))->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-                if ($apiAttribute = @$method->getAttributes(Api::class)[0]) {
-                    /** @var Api $api */
-                    $api = $apiAttribute->newInstance();
-
-                    $this->registerStateApi($method, $api);
-                }
-            }
-        }
+        $this->registerStateApis($this->context::states(), '');
     }
 
     protected function registerContextApi(\ReflectionMethod $method, Api $api): void
@@ -58,13 +49,35 @@ class RouteRegistrar
             ]);
     }
 
-    protected function registerStateApi(\ReflectionMethod $method, Api $api): void
+    protected function registerStateApis(array $states, string $prefix): void
+    {
+        /** @var class-string<State> $state */
+        foreach ($states as $state) {
+            foreach ((new \ReflectionClass($state))->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+                if ($apiAttribute = @$method->getAttributes(Api::class)[0]) {
+                    /** @var Api $api */
+                    $api = $apiAttribute->newInstance();
+
+                    $this->registerStateApi($method, $api, $prefix);
+                }
+            }
+
+            if (is_a($state, Context::class, true)) {
+                $this->registerStateApis(
+                    $state::states(),
+                    trim($prefix . '/' . $state::suffixUri(), '/')
+                );
+            }
+        }
+    }
+
+    protected function registerStateApi(\ReflectionMethod $method, Api $api, string $prefix): void
     {
         $uri = $this->getApiUri($method, $api, $withRecord);
         $middlewares = $this->getApiMiddlewares($method, $api);
 
         /** @var \Illuminate\Routing\Route $route */
-        $route = $this->router->{$api->method}($uri, [$this->context, 'invokeRoute']);
+        $route = $this->router->{$api->method}($prefix . '/' . $uri, [$this->context, 'invokeRoute']);
 
         $route
             ->middleware($middlewares)

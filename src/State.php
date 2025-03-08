@@ -3,6 +3,7 @@
 namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * @template T of Model
@@ -107,5 +108,10 @@ class State
 
     public function onReload(): void
     {
+    }
+
+    public static function suffixUri(): string
+    {
+        return Str::kebab(class_basename(static::class));
     }
 }
