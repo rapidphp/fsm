@@ -7,6 +7,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\OnState;
 use Rapid\Fsm\Attributes\OverrideApi;
+use Rapid\Fsm\Attributes\WithoutAuthorize;
 use Rapid\Fsm\Support\Facades\Fsm;
 use Rapid\Fsm\Traits\HasEvents;
 
@@ -137,17 +138,29 @@ class Context extends State
         $route->forgetParameter('withRecord');
         $route->forgetParameter('contextId');
 
-        $container = isset($state) ? app($state) : $this;
+        $container = isset($state) ? StateMapper::createStateFor($this, $state) : $this;
 
-        if (!isset($state) && $withRecord) {
-            $this->setRecord(static::model()::query()->findOrFail($contextId));
+        if ($withRecord) {
+            $this->setRecord(static::model()::query()->where(static::keyUsing(), $contextId)->firstOrFail());
 
+            if (!isset($state)) {
+                if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
+                    if ($onStates = $ref->getAttributes(OnState::class)) {
+                        /** @var OnState $onState */
+                        $onState = $onStates[0]->newInstance();
+
+                        Fsm::authorize($this, $onState->states);
+                    }
+                }
+
+                $container = $this->getApiTargetClass($edge);
+            }
+        }
+
+        if (isset($state)) {
             if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
-                if ($onStates = $ref->getAttributes(OnState::class)) {
-                    /** @var OnState $onState */
-                    $onState = $onStates[0]->newInstance();
-
-                    Fsm::authorize($this, $onState->states);
+                if (!$ref->getAttributes(WithoutAuthorize::class)) {
+                    Fsm::authorize($this, $state);
                 }
             }
 
@@ -205,6 +218,21 @@ class Context extends State
     public static function baseUri(): string
     {
         return Str::kebab(Str::beforeLast(class_basename(static::class), 'Context'));
+    }
+
+    public static function keyUsing(): string
+    {
+        return 'id';
+    }
+
+    public static function defaultCompare(): int
+    {
+        return FsmManager::INSTANCE_OF;
+    }
+
+    public static function defaultDenyStatus(): int
+    {
+        return 403;
     }
 
     public function onReload(): void

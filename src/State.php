@@ -62,7 +62,7 @@ class State
      */
     public function loadRecord(): ?Model
     {
-        if (static::model() === null) {
+        if (static::model() === null || !isset($this->parent->record)) {
             return null;
         }
 

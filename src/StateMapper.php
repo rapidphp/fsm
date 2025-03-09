@@ -97,6 +97,21 @@ final class StateMapper
         return $state;
     }
 
+    public static function createStateFor(Context $context, string $alias): ?State
+    {
+        $state = self::newState($alias);
+
+        if ($state === null) {
+            return null;
+        }
+
+        $state->setParent($context);
+        $state->loadRecord();
+        $state->onLoad();
+
+        return $state;
+    }
+
     public static function resetStateFor(Model $record, ?State $state = null): void
     {
         if (!isset(self::$states)) {
