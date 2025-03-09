@@ -8,6 +8,7 @@ use Illuminate\Support\Arr;
 use Rapid\Fsm\Context;
 use Rapid\Fsm\State;
 use Rapid\Fsm\StateMapper;
+use Rapid\Fsm\Support\Facades\Fsm;
 use Rapid\Laplus\Present\Present;
 
 /**
@@ -36,7 +37,7 @@ trait InteractsWithContext
     public function context(): Attribute
     {
         return Attribute::get(function (): Context {
-            return StateMapper::getContextFor($this, static::contextClass());
+            return Fsm::getContextFor($this, static::contextClass());
         });
     }
 

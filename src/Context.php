@@ -76,7 +76,7 @@ class Context extends State
             return null;
         }
 
-        return StateMapper::getStateFor($this->record, $this, $state);
+        return Fsm::getStateFor($this->record, $this, $state);
     }
 
     public function getCurrentDeepState(): ?State
@@ -117,7 +117,7 @@ class Context extends State
             'current_state' => $state,
         ]);
 
-        StateMapper::resetStateFor($this->record);
+        Fsm::resetStateFor($this->record);
 
         $this->getCurrentState()?->onEnter();
 
@@ -138,7 +138,7 @@ class Context extends State
         $route->forgetParameter('withRecord');
         $route->forgetParameter('contextId');
 
-        $container = isset($state) ? StateMapper::createStateFor($this, $state) : $this;
+        $container = isset($state) ? Fsm::createStateFor($this, $state) : $this;
 
         if ($withRecord) {
             $this->setRecord(static::model()::query()->where(static::keyUsing(), $contextId)->firstOrFail());
@@ -227,7 +227,7 @@ class Context extends State
 
     public static function defaultCompare(): int
     {
-        return FsmManager::INSTANCE_OF;
+        return FsmManager::DEFAULT;
     }
 
     public static function defaultDenyStatus(): int

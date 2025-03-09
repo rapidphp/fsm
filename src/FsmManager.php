@@ -4,6 +4,7 @@ namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
+use WeakMap;
 
 class FsmManager
 {
@@ -16,6 +17,16 @@ class FsmManager
     public const DEEP_INSTANCE_OF = 6;
 
     protected int $defaultCompare;
+
+    protected WeakMap $contexts;
+
+    protected WeakMap $states;
+
+    public function __construct()
+    {
+        $this->contexts = new WeakMap();
+        $this->states = new WeakMap();
+    }
 
     public function authorize(Model|Context $context, string|array $state, int $compare = self::DEFAULT, ?int $status = null): void
     {
@@ -34,6 +45,10 @@ class FsmManager
 
         if ($compare === self::DEFAULT) {
             $compare = $this->defaultCompare ?? $context::defaultCompare();
+
+            if ($compare === self::DEFAULT) {
+                $compare = self::INSTANCE_OF;
+            }
         }
 
         switch ($compare) {
@@ -99,5 +114,65 @@ class FsmManager
     public function setDefaultCompare(int $compare): void
     {
         $this->defaultCompare = $compare;
+    }
+
+    public function getContextFor(Model $record, string $class): Context
+    {
+        if ($this->contexts->offsetExists($record)) {
+            return $this->contexts->offsetGet($record);
+        }
+
+        $context = StateMapper::newContext($class);
+        $context->setRecord($record);
+        $context->onLoad();
+
+        $this->contexts->offsetSet($record, $context);
+
+        return $context;
+    }
+
+    public function getStateFor(Model $record, Context $context, string $alias): ?State
+    {
+        if ($this->states->offsetExists($record)) {
+            return $this->states->offsetGet($record);
+        }
+
+        $state = StateMapper::newState($alias);
+
+        if ($state === null) {
+            return null;
+        }
+
+        $state->setParent($context);
+        $state->loadRecord();
+        $state->onLoad();
+
+        $this->states->offsetSet($record, $state);
+
+        return $state;
+    }
+
+    public function createStateFor(Context $context, string $alias): ?State
+    {
+        $state = StateMapper::newState($alias);
+
+        if ($state === null) {
+            return null;
+        }
+
+        $state->setParent($context);
+        $state->loadRecord();
+        $state->onLoad();
+
+        return $state;
+    }
+
+    public function resetStateFor(Model $record, ?State $state = null): void
+    {
+        if (isset($state)) {
+            $this->states->offsetUnset($record);
+        } else {
+            $this->states->offsetSet($record, $state);
+        }
     }
 }
