@@ -60,11 +60,20 @@ class Context extends State
         }
     }
 
-    public static function defineRoutes(?Router $router = null): void
+    public static function defineRoutes(
+        ?Router $router = null,
+        ?string $prefix = null,
+        ?string $name = null,
+    ): void
     {
         static::bootIfNotBooted();
 
-        (new RouteRegistrar(static::class, $router ?? app('router')))->register();
+        (new RouteRegistrar(
+            context: static::class,
+            router: $router ?? app('router'),
+            prefix: $prefix,
+            name: $name,
+        ))->register();
     }
 
 
@@ -165,8 +174,7 @@ class Context extends State
                 if ($container instanceof Context) {
                     $container = $container->getApiTargetClass($edge);
                 }
-            }
-            else {
+            } else {
                 if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
                     if ($onStates = $ref->getAttributes(OnState::class)) {
                         /** @var OnState $onState */
@@ -230,13 +238,12 @@ class Context extends State
         return [];
     }
 
-    public static function baseUri(): string
-    {
-        return Str::kebab(Str::beforeLast(class_basename(static::class), 'Context'));
-    }
-
     public static function keyUsing(): string
     {
+        if ($model = static::model()) {
+            return (new $model)->getKeyName();
+        }
+        
         return 'id';
     }
 

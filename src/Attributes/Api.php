@@ -10,7 +10,7 @@ class Api
     public function __construct(
         public ?string           $uri = null,
         public string            $method = 'get',
-        public ?string           $name = null,
+        public null|false|string $name = null,
         public null|string|array $middleware = null,
     )
     {

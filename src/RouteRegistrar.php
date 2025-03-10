@@ -15,6 +15,8 @@ class RouteRegistrar
         /** @var class-string<Context> */
         public string $context,
         public Router $router,
+        public string $prefix,
+        public string $name,
     )
     {
     }
@@ -38,6 +40,7 @@ class RouteRegistrar
     protected function registerContextApi(\ReflectionMethod $method, Api $api): void
     {
         $uri = $this->getApiUri($method, $api, $withRecord);
+        $name = $this->getApiName($method, $api);
         $middlewares = $this->getApiMiddlewares($method, $api);
 
         /** @var \Illuminate\Routing\Route $route */
@@ -45,11 +48,14 @@ class RouteRegistrar
 
         $route
             ->middleware($middlewares)
-            ->name($api->name) // todo
             ->setDefaults([
                 '_edge' => $method->name,
                 '_withRecord' => $withRecord,
             ]);
+
+        if (isset($name)) {
+            $route->name($name);
+        }
 
         $this->registeredUris[] = $uri;
     }
@@ -79,6 +85,7 @@ class RouteRegistrar
     protected function registerStateApi(\ReflectionMethod $method, Api $api, string $prefix): void
     {
         $uri = $this->getApiUri($method, $api, $withRecord);
+        $name = $this->getApiName($method, $api);
         $middlewares = $this->getApiMiddlewares($method, $api);
 
         /** @var \Illuminate\Routing\Route $route */
@@ -86,19 +93,22 @@ class RouteRegistrar
 
         $route
             ->middleware($middlewares)
-            ->name($api->name) // todo
             ->setDefaults([
                 '_state' => $method->getDeclaringClass()->name,
                 '_edge' => $method->name,
                 '_withRecord' => $withRecord,
             ]);
 
+        if (isset($name)) {
+            $route->name($name);
+        }
+
         $this->registeredUris[] = $uri;
     }
 
     protected function getApiUri(\ReflectionMethod $method, Api $api, ?bool &$withRecord = null): string
     {
-        $uri = $this->context::baseUri();
+        $uri = $this->prefix;
 
         if ($withRecord = $this->context::model() !== null && !$method->getAttributes(WithoutRecord::class)) {
             $uri .= '/{_contextId}';
@@ -117,6 +127,15 @@ class RouteRegistrar
         }
 
         return $uri;
+    }
+
+    protected function getApiName(\ReflectionMethod $method, Api $api): ?string
+    {
+        if ($api->name === false) {
+            return null;
+        }
+
+        return $this->name . ($api->name ?? Str::snake($method->getName())); // todo: what is the best case?
     }
 
     protected function getApiMiddlewares(\ReflectionMethod $method, Api $api): array
