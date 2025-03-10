@@ -36,7 +36,7 @@ class FsmManager
             return;
         }
 
-        throw Gate::deny()->withStatus($status ?? $context::defaultDenyStatus());
+        throw Gate::deny()->withStatus($status ?? $context::defaultDenyStatus() ?? config('fsm.authorize.status'));
     }
 
     public function is(Model|Context $context, string|array $state, int $compare = self::DEFAULT): bool
@@ -44,11 +44,7 @@ class FsmManager
         $context = $context instanceof Model ? $context->context : $context;
 
         if ($compare === self::DEFAULT) {
-            $compare = $this->defaultCompare ?? $context::defaultCompare();
-
-            if ($compare === self::DEFAULT) {
-                $compare = self::INSTANCE_OF;
-            }
+            $compare = $this->defaultCompare ?? $context::defaultCompare() ?? config('fsm.compare');
         }
 
         switch ($compare) {

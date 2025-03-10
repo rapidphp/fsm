@@ -243,18 +243,18 @@ class Context extends State
         if ($model = static::model()) {
             return (new $model)->getKeyName();
         }
-        
+
         return 'id';
     }
 
-    public static function defaultCompare(): int
+    public static function defaultCompare(): ?int
     {
-        return FsmManager::DEFAULT;
+        return null;
     }
 
-    public static function defaultDenyStatus(): int
+    public static function defaultDenyStatus(): ?int
     {
-        return 403;
+        return null;
     }
 
     public static function debugEnabled(): bool
