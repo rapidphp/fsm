@@ -6,24 +6,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Reflector;
+use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\IntoTransaction;
 
 class CallableDispatcher extends \Illuminate\Routing\CallableDispatcher
 {
     public function dispatch(Route $route, $callable)
     {
-        $parameters = array_values($this->resolveParameters($route, $callable));
+        $dispatch = function () use ($route, $callable) {
+            return $callable(...array_values($this->resolveParameters($route, $callable)));
+        };
 
         if ($attributes = (new \ReflectionFunction($callable))->getAttributes(IntoTransaction::class)) {
             /** @var IntoTransaction $intoTransaction */
             $intoTransaction = $attributes[0]->newInstance();
-        } else {
-            $intoTransaction = null;
+            $dispatch = function () use ($dispatch, $intoTransaction) {
+                return DB::transaction($dispatch, $intoTransaction->attempts);
+            };
         }
 
-        return $intoTransaction ?
-            DB::transaction(fn() => $callable(...$parameters), $intoTransaction->attempts) :
-            $callable(...$parameters);
+        return $dispatch();
     }
 
     protected function resolveParameters(Route $route, $callable)
@@ -32,7 +34,11 @@ class CallableDispatcher extends \Illuminate\Routing\CallableDispatcher
             $routeParameter = $parameter->getName();
 
             if (!$route->hasParameter($routeParameter)) {
-                continue;
+                if ($route->hasParameter($snake = Str::snake($routeParameter))) {
+                    $routeParameter = $snake;
+                } else {
+                    continue;
+                }
             }
 
             if (!$class = Reflector::getParameterClassName($parameter)) {

@@ -38,9 +38,13 @@ class FsmAuthorizationTest extends TestCase
         };
 
         $this->assertTrue(Fsm::is($fake, FakeStateInterface::class));
+        $this->assertTrue(Fsm::is($fake, FakeEmptyState::class));
+        $this->assertTrue(Fsm::is($fake, FakeEmptyState2::class));
         $this->assertFalse(Fsm::is($fake, \stdClass::class));
 
         $this->assertTrue(Fsm::is($fake, FakeStateInterface::class, FsmManager::INSTANCE_OF));
+        $this->assertTrue(Fsm::is($fake, FakeEmptyState::class, FsmManager::INSTANCE_OF));
+        $this->assertTrue(Fsm::is($fake, FakeEmptyState2::class, FsmManager::INSTANCE_OF));
         $this->assertFalse(Fsm::is($fake, \stdClass::class, FsmManager::INSTANCE_OF));
 
         $this->assertTrue(Fsm::is($fake, FakeFooState::class, FsmManager::CONTAINS));

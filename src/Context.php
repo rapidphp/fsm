@@ -3,6 +3,7 @@
 namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\OnState;
@@ -144,11 +145,11 @@ class Context extends State
     }
 
 
-    public function invokeRoute(): mixed
+    public function invokeRoute(Request $request): mixed
     {
         static::fire(FsmEvents::RoutePreparing, $this);
 
-        $route = request()->route();
+        $route = $request->route();
         $parameters = $route->parameters();
         $state = $parameters['_state'] ?? null;
         $edge = $parameters['_edge'];
