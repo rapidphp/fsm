@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\Api;
 use Rapid\Fsm\Attributes\WithMiddleware;
 use Rapid\Fsm\Attributes\WithoutRecord;
+use Rapid\Fsm\Exceptions\ConflictDetectedException;
 
 class RouteRegistrar
 {
@@ -17,6 +18,8 @@ class RouteRegistrar
     )
     {
     }
+
+    protected array $registeredUris = [];
 
     public function register(): void
     {
@@ -44,9 +47,11 @@ class RouteRegistrar
             ->middleware($middlewares)
             ->name($api->name) // todo
             ->setDefaults([
-                'edge' => $method->name,
-                'withRecord' => $withRecord,
+                '_edge' => $method->name,
+                '_withRecord' => $withRecord,
             ]);
+
+        $this->registeredUris[] = $uri;
     }
 
     protected function registerStateApis(array $states, string $prefix): void
@@ -83,10 +88,12 @@ class RouteRegistrar
             ->middleware($middlewares)
             ->name($api->name) // todo
             ->setDefaults([
-                'state' => $method->getDeclaringClass()->name,
-                'edge' => $method->name,
-                'withRecord' => $withRecord,
+                '_state' => $method->getDeclaringClass()->name,
+                '_edge' => $method->name,
+                '_withRecord' => $withRecord,
             ]);
+
+        $this->registeredUris[] = $uri;
     }
 
     protected function getApiUri(\ReflectionMethod $method, Api $api, ?bool &$withRecord = null): string
@@ -94,10 +101,20 @@ class RouteRegistrar
         $uri = $this->context::baseUri();
 
         if ($withRecord = $this->context::model() !== null && !$method->getAttributes(WithoutRecord::class)) {
-            $uri .= '/{contextId}';
+            $uri .= '/{_contextId}';
         }
 
         $uri .= '/' . trim($api->uri ?? Str::kebab($method->getName()), '/');
+
+        if (in_array($uri, $this->registeredUris)) {
+            throw new ConflictDetectedException(sprintf(
+                "Api route [%s] is already registered in context [%s], at [%s::%s]",
+                $uri,
+                $this->context,
+                $method->getDeclaringClass()->name,
+                $method->name,
+            ));
+        }
 
         return $uri;
     }

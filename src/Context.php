@@ -7,7 +7,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\OnState;
 use Rapid\Fsm\Attributes\OverrideApi;
-use Rapid\Fsm\Attributes\WithoutAuthorize;
+use Rapid\Fsm\Attributes\WithoutAuthorizeState;
 use Rapid\Fsm\Support\Facades\Fsm;
 use Rapid\Fsm\Traits\HasEvents;
 
@@ -54,6 +54,10 @@ class Context extends State
         };
 
         $bootStates(static::states());
+
+        if (static::debugEnabled()) {
+            (new Debugger(static::class))->run();
+        }
     }
 
     public static function defineRoutes(?Router $router = null): void
@@ -111,7 +115,10 @@ class Context extends State
      */
     public function transitionTo(?string $state): ?State
     {
-        $this->getCurrentState()?->onLeave();
+        static::fire(FsmEvents::TransitionBefore, $this, $state);
+
+        $before = $this->getCurrentState();
+        $before?->onLeave();
 
         $this->record->update([
             'current_state' => $state,
@@ -119,31 +126,47 @@ class Context extends State
 
         Fsm::resetStateFor($this->record);
 
-        $this->getCurrentState()?->onEnter();
+        $after = $this->getCurrentState();
+        $after?->onEnter();
 
-        return $this->getCurrentState();
+        static::fire(FsmEvents::Transition, $this, $before, $after);
+
+        return $after;
     }
 
 
     public function invokeRoute(): mixed
     {
+        static::fire(FsmEvents::RoutePreparing, $this);
+
         $route = request()->route();
         $parameters = $route->parameters();
-        $state = $parameters['state'] ?? null;
-        $edge = $parameters['edge'];
-        $withRecord = $parameters['withRecord'];
-        $contextId = $parameters['contextId'] ?? null;
-        $route->forgetParameter('state');
-        $route->forgetParameter('edge');
-        $route->forgetParameter('withRecord');
-        $route->forgetParameter('contextId');
+        $state = $parameters['_state'] ?? null;
+        $edge = $parameters['_edge'];
+        $withRecord = $parameters['_withRecord'];
+        $contextId = $parameters['_contextId'] ?? null;
+        $route->forgetParameter('_state');
+        $route->forgetParameter('_edge');
+        $route->forgetParameter('_withRecord');
+        $route->forgetParameter('_contextId');
 
         $container = isset($state) ? Fsm::createStateFor($this, $state) : $this;
 
         if ($withRecord) {
             $this->setRecord(static::model()::query()->where(static::keyUsing(), $contextId)->firstOrFail());
 
-            if (!isset($state)) {
+            if (isset($state)) {
+                if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
+                    if (!$ref->getAttributes(WithoutAuthorizeState::class)) {
+                        Fsm::authorize($this, $state);
+                    }
+                }
+
+                if ($container instanceof Context) {
+                    $container = $container->getApiTargetClass($edge);
+                }
+            }
+            else {
                 if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
                     if ($onStates = $ref->getAttributes(OnState::class)) {
                         /** @var OnState $onState */
@@ -157,16 +180,6 @@ class Context extends State
             }
         }
 
-        if (isset($state)) {
-            if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
-                if (!$ref->getAttributes(WithoutAuthorize::class)) {
-                    Fsm::authorize($this, $state);
-                }
-            }
-
-            $container = $this->getApiTargetClass($edge);
-        }
-
         if (!method_exists($container, $edge)) {
             abort(404);
         }
@@ -176,6 +189,8 @@ class Context extends State
         if ($withRecord) {
             $this->onReload();
         }
+
+        static::fire(FsmEvents::RouteInvoking, $this, $container, $edge);
 
         return app(CallableDispatcher::class)->dispatch($route, $container->$edge(...));
     }
@@ -190,7 +205,7 @@ class Context extends State
             return $this;
         }
 
-        if ((new \ReflectionMethod($state, $name))->getAttributes(OverrideApi::class)) {
+        if (!(new \ReflectionMethod($state, $name))->getAttributes(OverrideApi::class)) {
             return $this;
         }
 
@@ -233,6 +248,11 @@ class Context extends State
     public static function defaultDenyStatus(): int
     {
         return 403;
+    }
+
+    public static function debugEnabled(): bool
+    {
+        return config('fsm.debug');
     }
 
     public function onReload(): void
