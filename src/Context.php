@@ -20,6 +20,8 @@ class Context extends State
 {
     use HasEvents;
 
+    public static bool $useParameterToFindRecord = true;
+
     public function __construct()
     {
         static::bootIfNotBooted();
@@ -167,7 +169,11 @@ class Context extends State
         $state = $parameters['_state'] ?? null;
         $edge = $parameters['_edge'];
         $withRecord = $parameters['_withRecord'];
-        $contextId = $parameters['_contextId'] ?? null;
+
+        if ($withRecord) {
+            $this->setRecord($this->findRecordUsingRequest($request));
+        }
+
         $route->forgetParameter('_state');
         $route->forgetParameter('_edge');
         $route->forgetParameter('_withRecord');
@@ -176,8 +182,6 @@ class Context extends State
         $container = isset($state) ? Fsm::createStateFor($this, $state) : $this;
 
         if ($withRecord) {
-            $this->setRecord(static::model()::query()->where(static::keyUsing(), $contextId)->firstOrFail());
-
             if (isset($state)) {
                 if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
                     if (!AttributeResolver::has($ref, WithoutAuthorizeState::class)) {
@@ -287,5 +291,12 @@ class Context extends State
     public function defaultLog(): ?PendingLog
     {
         return null;
+    }
+
+    protected function findRecordUsingRequest(Request $request): Model
+    {
+        return static::model()::query()
+            ->where(static::keyUsing(), $request->route('_contextId'))
+            ->firstOrFail();
     }
 }

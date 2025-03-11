@@ -105,7 +105,9 @@ class RouteRegistrar
         $uri = $this->prefix;
 
         if ($withRecord = $this->context::model() !== null && !AttributeResolver::has($method, WithoutRecord::class)) {
-            $uri .= '/{_contextId}';
+            if ($this->context::$useParameterToFindRecord) {
+                $uri .= '/{_contextId}';
+            }
         }
 
         $uri .= '/' . trim($api->uri ?? Str::kebab($method->getName()), '/');
