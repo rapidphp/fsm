@@ -13,10 +13,10 @@ class RouteRegistrar
 {
     public function __construct(
         /** @var class-string<Context> */
-        public string $context,
-        public Router $router,
-        public string $prefix,
-        public string $name,
+        public string  $context,
+        public Router  $router,
+        public ?string $prefix,
+        public ?string $name,
     )
     {
     }
@@ -26,10 +26,7 @@ class RouteRegistrar
     public function register(): void
     {
         foreach ((new \ReflectionClass($this->context))->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($apiAttribute = @$method->getAttributes(Api::class)[0]) {
-                /** @var Api $api */
-                $api = $apiAttribute->newInstance();
-
+            if ($api = AttributeResolver::get($method, Api::class)) {
                 $this->registerContextApi($method, $api);
             }
         }
@@ -65,10 +62,7 @@ class RouteRegistrar
         /** @var class-string<State> $state */
         foreach ($states as $state) {
             foreach ((new \ReflectionClass($state))->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-                if ($apiAttribute = @$method->getAttributes(Api::class)[0]) {
-                    /** @var Api $api */
-                    $api = $apiAttribute->newInstance();
-
+                if ($api = AttributeResolver::get($method, Api::class)) {
                     $this->registerStateApi($method, $api, $prefix);
                 }
             }
@@ -76,7 +70,7 @@ class RouteRegistrar
             if (is_a($state, Context::class, true)) {
                 $this->registerStateApis(
                     $state::states(),
-                    trim($prefix . '/' . $state::suffixUri(), '/')
+                    trim($prefix . '/' . $state::suffixUri(), '/'),
                 );
             }
         }
@@ -110,7 +104,7 @@ class RouteRegistrar
     {
         $uri = $this->prefix;
 
-        if ($withRecord = $this->context::model() !== null && !$method->getAttributes(WithoutRecord::class)) {
+        if ($withRecord = $this->context::model() !== null && !AttributeResolver::has($method, WithoutRecord::class)) {
             $uri .= '/{_contextId}';
         }
 
@@ -153,10 +147,7 @@ class RouteRegistrar
     {
         $result = [];
 
-        foreach ($reflection->getAttributes(WithMiddleware::class) as $attribute) {
-            /** @var WithMiddleware $withMiddleware */
-            $withMiddleware = $attribute->newInstance();
-
+        foreach (AttributeResolver::all($reflection, WithMiddleware::class) as $withMiddleware) {
             $result = array_merge($result, $this->middlewareToArray($withMiddleware->middleware));
         }
 

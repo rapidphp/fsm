@@ -17,9 +17,7 @@ class CallableDispatcher extends \Illuminate\Routing\CallableDispatcher
             return $callable(...array_values($this->resolveParameters($route, $callable)));
         };
 
-        if ($attributes = (new \ReflectionFunction($callable))->getAttributes(IntoTransaction::class)) {
-            /** @var IntoTransaction $intoTransaction */
-            $intoTransaction = $attributes[0]->newInstance();
+        if ($intoTransaction = AttributeResolver::get(new \ReflectionFunction($callable), IntoTransaction::class)) {
             $dispatch = function () use ($dispatch, $intoTransaction) {
                 return DB::transaction($dispatch, $intoTransaction->attempts);
             };

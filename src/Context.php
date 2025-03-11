@@ -5,14 +5,12 @@ namespace Rapid\Fsm;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
-use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\OnState;
 use Rapid\Fsm\Attributes\OverrideApi;
 use Rapid\Fsm\Attributes\WithoutAuthorizeState;
 use Rapid\Fsm\Looging\PendingLog;
 use Rapid\Fsm\Support\Facades\Fsm;
 use Rapid\Fsm\Traits\HasEvents;
-use Rapid\Fsm\Traits\HasLogging;
 
 /**
  * @template T of Model
@@ -21,7 +19,6 @@ use Rapid\Fsm\Traits\HasLogging;
 class Context extends State
 {
     use HasEvents;
-    use HasLogging;
 
     public function __construct()
     {
@@ -183,7 +180,7 @@ class Context extends State
 
             if (isset($state)) {
                 if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
-                    if (!$ref->getAttributes(WithoutAuthorizeState::class)) {
+                    if (!AttributeResolver::has($ref, WithoutAuthorizeState::class)) {
                         Fsm::authorize($this, $state);
                     }
                 }
@@ -193,10 +190,7 @@ class Context extends State
                 }
             } else {
                 if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
-                    if ($onStates = $ref->getAttributes(OnState::class)) {
-                        /** @var OnState $onState */
-                        $onState = $onStates[0]->newInstance();
-
+                    if ($onState = AttributeResolver::get($ref, OnState::class)) {
                         Fsm::authorize($this, $onState->states);
                     }
                 }
@@ -230,7 +224,7 @@ class Context extends State
             return $this;
         }
 
-        if (!(new \ReflectionMethod($state, $name))->getAttributes(OverrideApi::class)) {
+        if (!AttributeResolver::has(new \ReflectionMethod($state, $name), OverrideApi::class)) {
             return $this;
         }
 

@@ -63,7 +63,7 @@ class Debugger
                     OverrideApi::class,
                 ]);
 
-                if ($method->getAttributes(OverrideApi::class)) {
+                if (AttributeResolver::has($method, OverrideApi::class)) {
                     $this->detectCorrectOverrideApi($state, $method->name, $parents);
                 }
             }
@@ -77,12 +77,12 @@ class Debugger
 
     protected function detectCantUseWith($reflection, string $with, array $attributes): void
     {
-        if (!$reflection->getAttributes($with)) {
+        if (!AttributeResolver::has($reflection, $with)) {
             return;
         }
 
         foreach ($attributes as $attribute) {
-            if ($reflection->getAttributes($attribute)) {
+            if (AttributeResolver::all($reflection, $attribute)) {
                 $this->throwCantUseWith($attribute, $with, $reflection);
             }
         }
@@ -100,12 +100,12 @@ class Debugger
 
     protected function detectCantUseWithout($reflection, string $without, array $attributes): void
     {
-        if ($reflection->getAttributes($without)) {
+        if (AttributeResolver::has($reflection, $without)) {
             return;
         }
 
         foreach ($attributes as $attribute) {
-            if ($reflection->getAttributes($attribute)) {
+            if (AttributeResolver::has($reflection, $attribute)) {
                 $this->throwCantUseWithout($attribute, $without, $reflection);
             }
         }
@@ -124,7 +124,7 @@ class Debugger
     protected function detectCantUseInContext($reflection, array $attributes): void
     {
         foreach ($attributes as $attribute) {
-            if ($reflection->getAttributes($attribute)) {
+            if (AttributeResolver::has($reflection, $attribute)) {
                 $this->throwCantUseInContext($attribute, $reflection);
             }
         }
@@ -142,7 +142,7 @@ class Debugger
     protected function detectCantUseInState($reflection, array $attributes): void
     {
         foreach ($attributes as $attribute) {
-            if ($reflection->getAttributes($attribute)) {
+            if (AttributeResolver::has($reflection, $attribute)) {
                 $this->throwCantUseInState($attribute, $reflection);
             }
         }
@@ -163,11 +163,11 @@ class Debugger
             if (method_exists($parent, $name)) {
                 $reflection = new \ReflectionMethod($parent, $name);
 
-                if ($reflection->getAttributes(OverrideApi::class)) {
+                if (AttributeResolver::has($reflection, OverrideApi::class)) {
                     continue;
                 }
 
-                if ($reflection->getAttributes(Api::class)) {
+                if (AttributeResolver::has($reflection, Api::class)) {
                     return;
                 }
             }
