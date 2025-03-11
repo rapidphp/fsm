@@ -149,6 +149,8 @@ class Context extends State
 
         static::fire(FsmEvents::Transition, $this, $from, $to);
 
+        $log ??= $this->defaultLogUsing();
+
         if (isset($log)) {
             $log->fromState = $from;
             $log->toState = $to;
@@ -284,11 +286,11 @@ class Context extends State
         $this->getCurrentState()?->onReload();
     }
 
-    public function logUsing(PendingLog $log): void
+    protected function logUsing(PendingLog $log): void
     {
     }
 
-    public function defaultLog(): ?PendingLog
+    protected function defaultLogUsing(): ?PendingLog
     {
         return null;
     }
