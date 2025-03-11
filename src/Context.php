@@ -9,8 +9,10 @@ use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\OnState;
 use Rapid\Fsm\Attributes\OverrideApi;
 use Rapid\Fsm\Attributes\WithoutAuthorizeState;
+use Rapid\Fsm\Looging\PendingLog;
 use Rapid\Fsm\Support\Facades\Fsm;
 use Rapid\Fsm\Traits\HasEvents;
+use Rapid\Fsm\Traits\HasLogging;
 
 /**
  * @template T of Model
@@ -19,6 +21,7 @@ use Rapid\Fsm\Traits\HasEvents;
 class Context extends State
 {
     use HasEvents;
+    use HasLogging;
 
     public function __construct()
     {
@@ -118,17 +121,23 @@ class Context extends State
         return $building;
     }
 
+    public function useLog(): PendingLog
+    {
+        return new PendingLog($this);
+    }
+
     /**
      * @template V
      * @param null|class-string<V> $state
-     * @return null|State|V
+     * @param PendingLog|null $log
+     * @return State|null
      */
-    public function transitionTo(?string $state): ?State
+    public function transitionTo(?string $state, ?PendingLog $log = null): ?State
     {
         static::fire(FsmEvents::TransitionBefore, $this, $state);
 
-        $before = $this->getCurrentState();
-        $before?->onLeave();
+        $from = $this->getCurrentState();
+        $from?->onLeave();
 
         $this->record->update([
             'current_state' => $state,
@@ -136,12 +145,19 @@ class Context extends State
 
         Fsm::resetStateFor($this->record);
 
-        $after = $this->getCurrentState();
-        $after?->onEnter();
+        $to = $this->getCurrentState();
+        $to?->onEnter();
 
-        static::fire(FsmEvents::Transition, $this, $before, $after);
+        static::fire(FsmEvents::Transition, $this, $from, $to);
 
-        return $after;
+        if (isset($log)) {
+            $log->fromState = $from;
+            $log->toState = $to;
+
+            $this->logUsing($log);
+        }
+
+        return $to;
     }
 
 
@@ -268,5 +284,14 @@ class Context extends State
         parent::onReload();
 
         $this->getCurrentState()?->onReload();
+    }
+
+    public function logUsing(PendingLog $log): void
+    {
+    }
+
+    public function defaultLog(): ?PendingLog
+    {
+        return null;
     }
 }
