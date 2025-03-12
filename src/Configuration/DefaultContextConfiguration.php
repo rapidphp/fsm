@@ -4,6 +4,7 @@ namespace Rapid\Fsm\Configuration;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Rapid\Fsm\Context;
 use Rapid\Fsm\Logging\Logger;
 use Rapid\Fsm\Logging\PendingLog;
@@ -55,5 +56,15 @@ class DefaultContextConfiguration implements ContextConfiguration
     public function makeLogger(): Logger
     {
         return app()->make(Logger::class);
+    }
+
+    public function abortNotFound(): void
+    {
+        abort(404);
+    }
+
+    public function abortWrongState(array $expected, int $check, int $compare, int $status): void
+    {
+        abort($status);
     }
 }

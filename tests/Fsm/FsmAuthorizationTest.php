@@ -11,13 +11,13 @@ use Rapid\Fsm\Tests\FakeValues\States\FakeEmptyState2;
 use Rapid\Fsm\Tests\FakeValues\States\FakeFooState;
 use Rapid\Fsm\Tests\FakeValues\States\FakeStateInterface;
 use Rapid\Fsm\Tests\TestCase;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class FsmAuthorizationTest extends TestCase
 {
     public function testFsmAuthorizeCompares()
     {
-        $fake = new class extends Context
-        {
+        $fake = new class extends Context {
             public function getCurrentState(): ?State
             {
                 return new FakeEmptyState2();
@@ -47,23 +47,33 @@ class FsmAuthorizationTest extends TestCase
         $this->assertTrue(Fsm::is($fake, FakeEmptyState2::class, FsmManager::INSTANCE_OF));
         $this->assertFalse(Fsm::is($fake, \stdClass::class, FsmManager::INSTANCE_OF));
 
-        $this->assertTrue(Fsm::is($fake, FakeFooState::class, FsmManager::CONTAINS));
-        $this->assertTrue(Fsm::is($fake, [\stdClass::class, FakeFooState::class], FsmManager::CONTAINS));
-        $this->assertFalse(Fsm::is($fake, FakeStateInterface::class, FsmManager::CONTAINS));
-        $this->assertFalse(Fsm::is($fake, \stdClass::class, FsmManager::CONTAINS));
+        $this->assertTrue(Fsm::is($fake, FakeFooState::class, FsmManager::IS));
+        $this->assertTrue(Fsm::is($fake, [\stdClass::class, FakeFooState::class], FsmManager::IS));
+        $this->assertFalse(Fsm::is($fake, FakeStateInterface::class, FsmManager::IS));
+        $this->assertFalse(Fsm::is($fake, \stdClass::class, FsmManager::IS));
 
-        $this->assertTrue(Fsm::is($fake, FakeEmptyState2::class, FsmManager::HEAD_IS));
-        $this->assertFalse(Fsm::is($fake, FakeStateInterface::class, FsmManager::HEAD_IS));
+        $this->assertTrue(Fsm::is($fake, FakeEmptyState2::class, FsmManager::IS | FsmManager::CHECK_HEAD));
+        $this->assertFalse(Fsm::is($fake, FakeStateInterface::class, FsmManager::IS | FsmManager::CHECK_HEAD));
 
-        $this->assertTrue(Fsm::is($fake, FakeEmptyState2::class, FsmManager::HEAD_INSTANCE_OF));
-        $this->assertTrue(Fsm::is($fake, FakeStateInterface::class, FsmManager::HEAD_INSTANCE_OF));
-        $this->assertFalse(Fsm::is($fake, FakeFooState::class, FsmManager::HEAD_INSTANCE_OF));
+        $this->assertTrue(Fsm::is($fake, FakeFooState::class, FsmManager::IS | FsmManager::CHECK_DEEP));
+        $this->assertFalse(Fsm::is($fake, FakeStateInterface::class, FsmManager::IS | FsmManager::CHECK_DEEP));
 
-        $this->assertTrue(Fsm::is($fake, FakeFooState::class, FsmManager::DEEP_IS));
-        $this->assertFalse(Fsm::is($fake, FakeStateInterface::class, FsmManager::DEEP_IS));
+        $this->assertTrue(Fsm::is($fake, FakeFooState::class, FsmManager::INSTANCE_OF | FsmManager::CHECK_HAS));
+        $this->assertTrue(Fsm::is($fake, FakeStateInterface::class, FsmManager::INSTANCE_OF | FsmManager::CHECK_HAS));
+        $this->assertTrue(Fsm::is($fake, FakeEmptyState2::class, FsmManager::INSTANCE_OF | FsmManager::CHECK_HAS));
+        $this->assertFalse(Fsm::is($fake, \stdClass::class, FsmManager::INSTANCE_OF | FsmManager::CHECK_HAS));
 
-        $this->assertTrue(Fsm::is($fake, FakeFooState::class, FsmManager::DEEP_INSTANCE_OF));
-        $this->assertTrue(Fsm::is($fake, FakeStateInterface::class, FsmManager::DEEP_INSTANCE_OF));
-        $this->assertFalse(Fsm::is($fake, FakeEmptyState2::class, FsmManager::DEEP_INSTANCE_OF));
+        $this->assertTrue(Fsm::is($fake, [FakeEmptyState2::class, FakeFooState::class], FsmManager::INSTANCE_OF | FsmManager::CHECK_BUILDING));
+        $this->assertTrue(Fsm::is($fake, [FakeEmptyState2::class, [\stdClass::class, FakeFooState::class]], FsmManager::INSTANCE_OF | FsmManager::CHECK_BUILDING));
+        $this->assertFalse(Fsm::is($fake, [FakeEmptyState2::class, [\stdClass::class, FakeEmptyState2::class]], FsmManager::INSTANCE_OF | FsmManager::CHECK_BUILDING));
+    }
+
+    public function testThrowAuthorization()
+    {
+        $fake = new class extends Context {
+        };
+
+        $this->expectException(HttpException::class);
+        Fsm::authorize($fake, FakeStateInterface::class);
     }
 }

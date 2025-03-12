@@ -67,38 +67,30 @@ class FsmManager
     public function authorize(Model|Context $context, string|array $state, int $compare = self::DEFAULT, ?int $status = null): void
     {
         $context = $context instanceof Model ? $context->context : $context;
+        [$check, $compare] = $this->formatCompare($context, $compare);
 
-        Gate::allowIf(
-            $this->is($context, $state, $compare),
-            code: $status ?? $context::configuration()->denyStatus() ?? config('fsm.authorize.status'),
-        );
+        if (!$this->is($context, $state, $check & $compare)) {
+            $context::configuration()
+                ->abortWrongState((array)$state, $check, $compare, $status ?? 403);
+        }
     }
 
     public function is(Model|Context $context, string|array $state, int $compare = self::DEFAULT): bool
     {
         $context = $context instanceof Model ? $context->context : $context;
-
-        $check = 0b11110000 & $compare;
-        $compare = 0b00001111 & $compare;
-
-        if ($compare === self::DEFAULT) {
-            $compare = 0b00001111 & ($context::configuration()->compare() ?? $this->defaultCompare ?? config('fsm.compare'));
-        }
-
-        if ($check === self::DEFAULT) {
-            $check = self::CHECK_HAS;
-        }
+        [$check, $compare] = $this->formatCompare($context, $compare);
 
         switch ($check) {
             case self::CHECK_BUILDING:
                 $building = $context->getCurrentStateBuilding();
                 $state = (array)$state;
-                if (count($building) !== count($state)) {
+                if (count($building) < count($state)) {
                     return false;
                 }
 
-                foreach ($building as $key => $bState) {
-                    if (!$this->checkStateIs($bState, $state[$key], $compare)) {
+                $i = 0;
+                foreach ($state as $st) {
+                    if (!$this->checkStateIs($building[$i++], $st, $compare)) {
                         return false;
                     }
                 }
@@ -126,8 +118,12 @@ class FsmManager
         return false;
     }
 
-    protected function checkStateIs(State $state, string|array $type, int $compare): bool
+    protected function checkStateIs(?State $state, string|array $type, int $compare): bool
     {
+        if ($state === null) {
+            return false;
+        }
+
         switch ($compare) {
             case self::INSTANCE_OF:
                 foreach ((array)$type as $class) {
@@ -146,6 +142,22 @@ class FsmManager
             default:
                 return false;
         }
+    }
+
+    protected function formatCompare(Context $context, int $compare): array
+    {
+        $check = 0b11110000 & $compare;
+        $compare = 0b00001111 & $compare;
+
+        if ($compare === self::DEFAULT) {
+            $compare = 0b00001111 & ($context::configuration()->compare() ?? $this->defaultCompare ?? config('fsm.compare'));
+        }
+
+        if ($check === self::DEFAULT) {
+            $check = self::CHECK_HAS;
+        }
+
+        return [$check, $compare];
     }
 
     public function getDefaultCompare(): int
@@ -177,6 +189,14 @@ class FsmManager
     {
         if ($this->states->offsetExists($record)) {
             return $this->states->offsetGet($record);
+        }
+
+        $availableStates = $context::states();
+
+        if (isset($availableStates[$alias])) {
+            $alias = $availableStates[$alias];
+        } elseif (!in_array($alias, $availableStates)) {
+            return null;
         }
 
         $state = StateMapper::newState($alias);

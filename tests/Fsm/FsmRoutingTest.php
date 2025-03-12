@@ -26,7 +26,7 @@ class FsmRoutingTest extends TestCase
     {
         $router = new Router(new Dispatcher());
         $router->name('fsm.')->prefix('fsm')->group(function (Router $router) {
-            FakeContext::defineRoutes($router, 'fake', 'fake.');
+            FakeContext::routes($router, 'fake', 'fake.');
         });
 
         $this->assertRouteIsRegistered($router, 'fsm/fake/store', 'fsm.fake.store');

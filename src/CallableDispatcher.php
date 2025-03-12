@@ -2,15 +2,22 @@
 
 namespace Rapid\Fsm;
 
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Reflector;
 use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\IntoTransaction;
+use ReflectionParameter;
 
 class CallableDispatcher extends \Illuminate\Routing\CallableDispatcher
 {
+    public function __construct(protected Context $context, Container $container)
+    {
+        parent::__construct($container);
+    }
+
     public function dispatch(Route $route, $callable)
     {
         $dispatch = function () use ($route, $callable) {
@@ -31,24 +38,33 @@ class CallableDispatcher extends \Illuminate\Routing\CallableDispatcher
         foreach ((new \ReflectionFunction($callable))->getParameters() as $parameter) {
             $routeParameter = $parameter->getName();
 
-            if (!$route->hasParameter($routeParameter)) {
-                if ($route->hasParameter($snake = Str::snake($routeParameter))) {
-                    $routeParameter = $snake;
-                } else {
-                    continue;
-                }
-            }
-
-            if (!$class = Reflector::getParameterClassName($parameter)) {
+            if ($route->hasParameter($routeParameter)) {
+                $this->resolveFromRouteParameter($route, $routeParameter, $parameter);
+                continue;
+            } elseif ($route->hasParameter($snake = Str::snake($routeParameter))) {
+                $this->resolveFromRouteParameter($route, $snake, $parameter);
                 continue;
             }
 
-            if (!is_a($class, Model::class, true)) {
-                continue;
-            }
+            $classType = Reflector::getParameterClassName($parameter);
 
+            if ($routeParameter === 'context' && ($classType === null || is_a($classType, Context::class, true))) {
+                $route->setParameter($routeParameter, $this->context);
+            }
+        }
+
+        return parent::resolveParameters($route, $callable);
+    }
+
+    protected function resolveFromRouteParameter(Route $route, string $routeParameter, ReflectionParameter $parameter): void
+    {
+        if (!$class = Reflector::getParameterClassName($parameter)) {
+            return;
+        }
+
+        if (is_a($class, Model::class, true)) {
             if ($parameter->isDefaultValueAvailable() && $route->parameter($routeParameter) === null) {
-                continue;
+                return;
             }
 
             if ($callback = \Illuminate\Support\Facades\Route::getBindingCallback($routeParameter)) {
@@ -64,7 +80,5 @@ class CallableDispatcher extends \Illuminate\Routing\CallableDispatcher
 
             $route->setParameter($routeParameter, $value);
         }
-
-        return parent::resolveParameters($route, $callable);
     }
 }

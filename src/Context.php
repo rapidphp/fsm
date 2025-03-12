@@ -70,7 +70,7 @@ class Context extends State
         }
     }
 
-    public static function defineRoutes(
+    public static function routes(
         ?Router $router = null,
         ?string $prefix = null,
         ?string $name = null,
@@ -140,7 +140,9 @@ class Context extends State
      */
     public function transitionTo(?string $state, ?PendingLog $log = null): ?State
     {
-        if ($state !== null && !in_array($state, static::states())) {
+        $availableStates = static::states();
+
+        if ($state !== null && !in_array($state, $availableStates)) {
             throw new StateNotFoundException(sprintf("State [%s] is not a valid state for [%s]", $state, static::class));
         }
 
@@ -149,8 +151,14 @@ class Context extends State
         $from = $this->getCurrentState();
         $from?->onLeave();
 
+        $stateName = array_search($state, $availableStates);
+
+        if (is_int($stateName)) {
+            $stateName = $state;
+        }
+
         $this->record->update([
-            'current_state' => $state,
+            'current_state' => $stateName,
         ]);
 
         Fsm::resetStateFor($this->record);
@@ -219,7 +227,7 @@ class Context extends State
         }
 
         if (!method_exists($container, $edge)) {
-            abort(404);
+            static::configuration()->abortNotFound();
         }
 
         $this->onLoad();
@@ -325,6 +333,11 @@ class Context extends State
         }
 
         return $deleted;
+    }
+
+    public function authorize(string|array $state, int $compare = FsmManager::DEFAULT, ?int $status = null): void
+    {
+        Fsm::authorize($this, $state, $compare, $status);
     }
 
     public function __get(string $name)

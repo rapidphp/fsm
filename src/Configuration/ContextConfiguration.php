@@ -25,4 +25,8 @@ interface ContextConfiguration
     public function findRecord(Request $request): Model;
 
     public function makeLogger(): Logger;
+
+    public function abortNotFound(): void;
+
+    public function abortWrongState(array $expected, int $check, int $compare, int $status): void;
 }
