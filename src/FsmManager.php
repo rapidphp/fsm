@@ -78,15 +78,15 @@ class FsmManager
     {
         $context = $context instanceof Model ? $context->context : $context;
 
-        if ($compare === self::DEFAULT) {
-            $compare = $this->defaultCompare ?? $context::configuration()->compare() ?? config('fsm.compare');
-        }
-
         $check = 0b11110000 & $compare;
         $compare = 0b00001111 & $compare;
 
         if ($compare === self::DEFAULT) {
-            $compare = 0b00001111 & ($this->defaultCompare ?? $context::configuration()->compare() ?? config('fsm.compare'));
+            $compare = 0b00001111 & ($context::configuration()->compare() ?? $this->defaultCompare ?? config('fsm.compare'));
+        }
+
+        if ($check === self::DEFAULT) {
+            $check = self::CHECK_HAS;
         }
 
         switch ($check) {
