@@ -7,10 +7,13 @@ use Illuminate\Support\Str;
 use Rapid\Fsm\Attributes\Api;
 use Rapid\Fsm\Attributes\WithMiddleware;
 use Rapid\Fsm\Attributes\WithoutRecord;
+use Rapid\Fsm\Configuration\ContextConfiguration;
 use Rapid\Fsm\Exceptions\ConflictDetectedException;
 
 class RouteRegistrar
 {
+    public ContextConfiguration $configuration;
+
     public function __construct(
         /** @var class-string<Context> */
         public string  $context,
@@ -19,6 +22,7 @@ class RouteRegistrar
         public ?string $name,
     )
     {
+        $this->configuration = $this->context::configuration();
     }
 
     protected array $registeredUris = [];
@@ -105,7 +109,7 @@ class RouteRegistrar
         $uri = $this->prefix;
 
         if ($withRecord = $this->context::model() !== null && !AttributeResolver::has($method, WithoutRecord::class)) {
-            if ($this->context::$useParameterToFindRecord) {
+            if ($this->configuration->useContextIdInRoute()) {
                 $uri .= '/{_contextId}';
             }
         }
@@ -141,7 +145,7 @@ class RouteRegistrar
             $this->getWithMiddlewareValues($method),
             $this->getWithMiddlewareValues($method->getDeclaringClass()),
             $method->getDeclaringClass()->name === $this->context ? [] : $this->getWithMiddlewareValues(new \ReflectionClass($this->context)),
-            $this->context::withMiddleware(),
+            $this->context::withMiddlewares(),
         );
     }
 

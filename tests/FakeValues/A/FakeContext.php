@@ -10,13 +10,10 @@ class FakeContext extends Context
 {
     protected static string $model = FakeModel::class;
 
-    public static function states(): array
-    {
-        return [
-            FakeA::class,
-            FakeB::class,
-        ];
-    }
+    public static array $states = [
+        FakeA::class,
+        FakeB::class,
+    ];
 
     #[Api, WithoutRecord]
     public function store()

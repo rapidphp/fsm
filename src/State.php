@@ -49,12 +49,16 @@ class State
         return $record;
     }
 
-    public function deleteRecord(): void
+    public function deleteRecord(): ?bool
     {
         if (isset($this->record)) {
-            $this->record->delete();
+            $ok = $this->record->delete();
             unset($this->record);
+
+            return $ok;
         }
+
+        return null;
     }
 
     /**
@@ -80,6 +84,7 @@ class State
 
 
     protected static string $model;
+    protected static string $modelKey;
 
     /**
      * @return null|class-string<T>|class-string<Model>
@@ -87,6 +92,19 @@ class State
     public static function model(): ?string
     {
         return static::$model ?? null;
+    }
+
+    public static function modelKey(): string
+    {
+        if (isset(static::$modelKey)) {
+            return static::$modelKey;
+        }
+
+        if ($model = static::model()) {
+            return (new $model)->getKeyName();
+        }
+
+        return 'id';
     }
 
 

@@ -3,6 +3,10 @@
 namespace Rapid\Fsm;
 
 use Illuminate\Support\ServiceProvider;
+use Rapid\Fsm\Configuration\ContextConfiguration;
+use Rapid\Fsm\Configuration\DefaultContextConfiguration;
+use Rapid\Fsm\Logging\EmptyLogger;
+use Rapid\Fsm\Logging\Logger;
 
 class FsmServiceProvider extends ServiceProvider
 {
@@ -15,6 +19,9 @@ class FsmServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerLang();
         $this->commands($this->commands);
+
+        $this->app->bindIf(ContextConfiguration::class, DefaultContextConfiguration::class);
+        $this->app->bindIf(Logger::class, EmptyLogger::class);
     }
 
     protected function registerConfig()

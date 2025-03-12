@@ -3,7 +3,10 @@
 namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Rapid\Fsm\Configuration\ContextConfiguration;
+use Rapid\Fsm\Logging\Logger;
 use WeakMap;
 
 class FsmManager
@@ -21,6 +24,8 @@ class FsmManager
     protected WeakMap $contexts;
 
     protected WeakMap $states;
+    protected array $configurations = [];
+    protected array $loggers = [];
 
     public function __construct()
     {
@@ -28,15 +33,44 @@ class FsmManager
         $this->states = new WeakMap();
     }
 
+    /**
+     * @param class-string<Context> $context
+     * @return ContextConfiguration
+     */
+    public function getContextConfiguration(string $context): ContextConfiguration
+    {
+        if (isset($this->configurations[$context])) {
+            return $this->configurations[$context];
+        }
+
+        $configuration = $context::makeConfiguration();
+        $configuration->setClass($context);
+
+        return $this->configurations[$context] = $configuration;
+    }
+
+    /**
+     * @param class-string<Context> $context
+     * @return Logger
+     */
+    public function getContextLogger(string $context): Logger
+    {
+        if (isset($this->loggers[$context])) {
+            return $this->loggers[$context];
+        }
+
+        $logger = $context::makeLogger();
+        return $this->loggers[$context] = $logger;
+    }
+
     public function authorize(Model|Context $context, string|array $state, int $compare = self::DEFAULT, ?int $status = null): void
     {
         $context = $context instanceof Model ? $context->context : $context;
 
-        if ($this->is($context, $state, $compare)) {
-            return;
-        }
-
-        throw Gate::deny()->withStatus($status ?? $context::defaultDenyStatus() ?? config('fsm.authorize.status'));
+        Gate::allowIf(
+            $this->is($context, $state, $compare),
+            code: $status ?? $context::configuration()->denyStatus() ?? config('fsm.authorize.status'),
+        );
     }
 
     public function is(Model|Context $context, string|array $state, int $compare = self::DEFAULT): bool
@@ -44,7 +78,7 @@ class FsmManager
         $context = $context instanceof Model ? $context->context : $context;
 
         if ($compare === self::DEFAULT) {
-            $compare = $this->defaultCompare ?? $context::defaultCompare() ?? config('fsm.compare');
+            $compare = $this->defaultCompare ?? $context::configuration()->compare() ?? config('fsm.compare');
         }
 
         switch ($compare) {
@@ -170,5 +204,25 @@ class FsmManager
         } else {
             $this->states->offsetSet($record, $state);
         }
+    }
+
+    public function getRequestContext(?Request $request = null): ?Context
+    {
+        return ($request ?? request())->attributes->get(Context::class);
+    }
+
+    public function setRequestContext(Context $context, ?Request $request = null): void
+    {
+        ($request ?? request())->attributes->set(Context::class, $context);
+    }
+
+    public function getRequestState(?Request $request = null): ?State
+    {
+        return $this->getRequestContext($request)?->getCurrentState();
+    }
+
+    public function getRequestDeepState(?Request $request = null): ?State
+    {
+        return $this->getRequestContext($request)?->getCurrentDeepState();
     }
 }

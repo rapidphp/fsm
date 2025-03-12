@@ -1,6 +1,6 @@
 <?php
 
-namespace Rapid\Fsm\Looging;
+namespace Rapid\Fsm\Logging;
 
 use Rapid\Fsm\Context;
 use Rapid\Fsm\State;

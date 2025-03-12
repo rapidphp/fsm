@@ -8,19 +8,26 @@ use Illuminate\Routing\Router;
 use Rapid\Fsm\Attributes\OnState;
 use Rapid\Fsm\Attributes\OverrideApi;
 use Rapid\Fsm\Attributes\WithoutAuthorizeState;
-use Rapid\Fsm\Looging\PendingLog;
+use Rapid\Fsm\Configuration\ContextConfiguration;
+use Rapid\Fsm\Exceptions\StateNotFoundException;
+use Rapid\Fsm\Logging\Logger;
+use Rapid\Fsm\Logging\PendingLog;
 use Rapid\Fsm\Support\Facades\Fsm;
 use Rapid\Fsm\Traits\HasEvents;
 
 /**
  * @template T of Model
+ * @property null|State $state
+ * @property null|State $deepState
  * @extends State<T>
  */
 class Context extends State
 {
     use HasEvents;
 
-    public static bool $useParameterToFindRecord = true;
+    protected static string $configurationClass;
+    protected static string $loggerClass;
+    protected static array $states;
 
     public function __construct()
     {
@@ -58,7 +65,7 @@ class Context extends State
 
         $bootStates(static::states());
 
-        if (static::debugEnabled()) {
+        if (static::configuration()->debugEnabled()) {
             (new Debugger(static::class))->run();
         }
     }
@@ -133,6 +140,10 @@ class Context extends State
      */
     public function transitionTo(?string $state, ?PendingLog $log = null): ?State
     {
+        if ($state !== null && !in_array($state, static::states())) {
+            throw new StateNotFoundException(sprintf("State [%s] is not a valid state for [%s]", $state, static::class));
+        }
+
         static::fire(FsmEvents::TransitionBefore, $this, $state);
 
         $from = $this->getCurrentState();
@@ -149,13 +160,13 @@ class Context extends State
 
         static::fire(FsmEvents::Transition, $this, $from, $to);
 
-        $log ??= $this->defaultLogUsing();
+        $log ??= static::configuration()->defaultLog();
 
         if (isset($log)) {
             $log->fromState = $from;
             $log->toState = $to;
 
-            $this->logUsing($log);
+            static::logger()->transition($log);
         }
 
         return $to;
@@ -173,7 +184,7 @@ class Context extends State
         $withRecord = $parameters['_withRecord'];
 
         if ($withRecord) {
-            $this->setRecord($this->findRecordUsingRequest($request));
+            $this->setRecord(static::configuration()->findRecord($request));
         }
 
         $route->forgetParameter('_state');
@@ -217,7 +228,12 @@ class Context extends State
 
         static::fire(FsmEvents::RouteInvoking, $this, $container, $edge);
 
-        return app(CallableDispatcher::class)->dispatch($route, $container->$edge(...));
+        $response = app(CallableDispatcher::class)->dispatch($route, $container->$edge(...));
+
+        static::logger()->called($this, $container, $edge);
+        static::logger()->requested($this, $request, $response);
+
+        return $response;
     }
 
     private function getApiTargetClass(string $name): object
@@ -247,36 +263,36 @@ class Context extends State
      */
     public static function states(): array
     {
-        return [];
+        return static::$states ?? [];
     }
 
-    public static function withMiddleware(): array
+    public static function withMiddlewares(): array
     {
         return [];
     }
 
-    public static function keyUsing(): string
+    final public static function configuration(): ContextConfiguration
     {
-        if ($model = static::model()) {
-            return (new $model)->getKeyName();
-        }
-
-        return 'id';
+        return Fsm::getContextConfiguration(static::class);
     }
 
-    public static function defaultCompare(): ?int
+    public static function makeConfiguration(): ContextConfiguration
     {
-        return null;
+        return isset(static::$configurationClass) ?
+            new (static::$configurationClass) :
+            app()->make(ContextConfiguration::class);
     }
 
-    public static function defaultDenyStatus(): ?int
+    final public static function logger(): Logger
     {
-        return null;
+        return Fsm::getContextLogger(static::class);
     }
 
-    public static function debugEnabled(): bool
+    public static function makeLogger(): Logger
     {
-        return config('fsm.debug');
+        return isset(static::$loggerClass) ?
+            new (static::$loggerClass) :
+            static::configuration()->makeLogger();
     }
 
     public function onReload(): void
@@ -286,19 +302,35 @@ class Context extends State
         $this->getCurrentState()?->onReload();
     }
 
-    protected function logUsing(PendingLog $log): void
+    /**
+     * @inheritDoc
+     */
+    public function createRecord(array $attributes): Model
     {
+        $record = parent::createRecord($attributes);
+        static::logger()->createdRecord($this, $record);
+
+        return $record;
     }
 
-    protected function defaultLogUsing(): ?PendingLog
+    public function deleteRecord(): ?bool
     {
-        return null;
+        $record = $this->record ?? null;
+        $deleted = parent::deleteRecord();
+
+        if ($deleted === true) {
+            static::logger()->deletedRecord($this, $record);
+        }
+
+        return $deleted;
     }
 
-    protected function findRecordUsingRequest(Request $request): Model
+    public function __get(string $name)
     {
-        return static::model()::query()
-            ->where(static::keyUsing(), $request->route('_contextId'))
-            ->firstOrFail();
+        return match ($name) {
+            'state'     => $this->getCurrentState(),
+            'deepState' => $this->getCurrentDeepState(),
+            default     => throw new \Exception(sprintf("Property [%s] is not defined in [%s]", $name, static::class)),
+        };
     }
 }
