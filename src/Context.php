@@ -183,6 +183,8 @@ class Context extends State
         $edge = $parameters['_edge'];
         $withRecord = $parameters['_withRecord'];
 
+        Fsm::setRequestContext($this, $request);
+
         if ($withRecord) {
             $this->setRecord(static::configuration()->findRecord($request));
         }
@@ -208,7 +210,7 @@ class Context extends State
             } else {
                 if (method_exists($container, $edge) && $ref = new \ReflectionMethod($container, $edge)) {
                     if ($onState = AttributeResolver::get($ref, OnState::class)) {
-                        Fsm::authorize($this, $onState->states);
+                        Fsm::authorize($this, $onState->states, $onState->compare, $onState->status);
                     }
                 }
 

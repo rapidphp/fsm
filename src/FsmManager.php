@@ -11,13 +11,14 @@ use WeakMap;
 
 class FsmManager
 {
-    public const DEFAULT = 0;
-    public const INSTANCE_OF = 1;
-    public const CONTAINS = 2;
-    public const HEAD_IS = 3;
-    public const HEAD_INSTANCE_OF = 4;
-    public const DEEP_IS = 5;
-    public const DEEP_INSTANCE_OF = 6;
+    public const DEFAULT = 0b00000000;
+    public const INSTANCE_OF = 0b00000001;
+    public const IS = 0b00000010;
+
+    public const CHECK_HAS = 0b00010000;
+    public const CHECK_HEAD = 0b00100000;
+    public const CHECK_DEEP = 0b00110000;
+    public const CHECK_BUILDING = 0b01000000;
 
     protected int $defaultCompare;
 
@@ -81,59 +82,70 @@ class FsmManager
             $compare = $this->defaultCompare ?? $context::configuration()->compare() ?? config('fsm.compare');
         }
 
-        switch ($compare) {
-            case self::INSTANCE_OF:
-                $currentStates = $context->getCurrentStateBuilding();
-                foreach ((array)$state as $class) {
-                    foreach ($currentStates as $current) {
-                        if ($current instanceof $class) {
-                            return true;
-                        }
+        $check = 0b11110000 & $compare;
+        $compare = 0b00001111 & $compare;
+
+        if ($compare === self::DEFAULT) {
+            $compare = 0b00001111 & ($this->defaultCompare ?? $context::configuration()->compare() ?? config('fsm.compare'));
+        }
+
+        switch ($check) {
+            case self::CHECK_BUILDING:
+                $building = $context->getCurrentStateBuilding();
+                $state = (array)$state;
+                if (count($building) !== count($state)) {
+                    return false;
+                }
+
+                foreach ($building as $key => $bState) {
+                    if (!$this->checkStateIs($bState, $state[$key], $compare)) {
+                        return false;
                     }
                 }
-                break;
 
-            case self::CONTAINS:
-                $currentStates = array_map(fn($st) => $st::class, $context->getCurrentStateBuilding());
-                foreach ((array)$state as $class) {
-                    if (in_array($class, $currentStates)) {
+                return true;
+                
+            case self::CHECK_HAS:
+                $building = $context->getCurrentStateBuilding();
+
+                foreach ($building as $bState) {
+                    if ($this->checkStateIs($bState, $state, $compare)) {
                         return true;
                     }
                 }
-                break;
 
-            case self::HEAD_IS:
-                $head = $context->getCurrentState();
+                return false;
 
-                return isset($head) && in_array($head::class, (array)$state);
+            case self::CHECK_HEAD:
+                return $this->checkStateIs($context->getCurrentState(), $state, $compare);
 
-            case self::HEAD_INSTANCE_OF:
-                $head = $context->getCurrentState();
-
-                foreach ((array)$state as $class) {
-                    if ($head instanceof $class) {
-                        return true;
-                    }
-                }
-                break;
-
-            case self::DEEP_IS:
-                $head = $context->getCurrentDeepState();
-
-                return isset($head) && in_array($head::class, (array)$state);
-
-            case self::DEEP_INSTANCE_OF:
-                $head = $context->getCurrentDeepState();
-
-                foreach ((array)$state as $class) {
-                    if ($head instanceof $class) {
-                        return true;
-                    }
-                }
-                break;
+            case self::CHECK_DEEP:
+                return $this->checkStateIs($context->getCurrentDeepState(), $state, $compare);
         }
 
         return false;
+    }
+
+    protected function checkStateIs(State $state, string|array $type, int $compare): bool
+    {
+        switch ($compare) {
+            case self::INSTANCE_OF:
+                foreach ((array)$type as $class) {
+                    if ($state instanceof $class) {
+                        return true;
+                    }
+                }
+
+                return false;
+
+            case self::IS:
+                return is_array($type) ?
+                    in_array(get_class($state), $type, true) :
+                    get_class($state) === $type;
+
+            default:
+                return false;
+        }
     }
 
     public function getDefaultCompare(): int
