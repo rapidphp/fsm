@@ -179,6 +179,7 @@ class FsmManager
         $context = StateMapper::newContext($class);
         $context->setRecord($record);
         $context->onLoad();
+        $context->onReload();
 
         $this->contexts->offsetSet($record, $context);
 
