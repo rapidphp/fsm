@@ -37,7 +37,7 @@ class FsmRoutingTest extends TestCase
         Router  $router,
         string  $uri,
         ?string $name = null,
-    )
+    ): void
     {
         /** @var Route $route */
         foreach ($router->getRoutes() as $route) {
