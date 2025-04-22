@@ -140,22 +140,15 @@ class Context extends State
      */
     public function transitionTo(?string $state, ?PendingLog $log = null): ?State
     {
-        $availableStates = static::states();
-
-        if ($state !== null && !in_array($state, $availableStates)) {
-            throw new StateNotFoundException(sprintf("State [%s] is not a valid state for [%s]", $state, static::class));
-        }
+        $stateName = isset($state) ? (
+            static::getStateAliasName($state) ??
+            throw new StateNotFoundException(sprintf("State [%s] is not a valid state for [%s]", $state, static::class))
+        ) : null;
 
         static::fire(FsmEvents::TransitionBefore, $this, $state);
 
         $from = $this->getCurrentState();
         $from?->onLeave();
-
-        $stateName = array_search($state, $availableStates);
-
-        if (is_int($stateName)) {
-            $stateName = $state;
-        }
 
         $this->record->update([
             'current_state' => $stateName,

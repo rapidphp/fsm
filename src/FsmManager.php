@@ -192,11 +192,9 @@ class FsmManager
             return $this->states->offsetGet($record);
         }
 
-        $availableStates = $context::states();
+        $class = $context::getStateClass($alias);
 
-        if (isset($availableStates[$alias])) {
-            $alias = $availableStates[$alias];
-        } elseif (!in_array($alias, $availableStates)) {
+        if ($class === null) {
             return null;
         }
 
