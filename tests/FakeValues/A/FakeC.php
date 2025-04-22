@@ -4,7 +4,7 @@ namespace Rapid\Fsm\Tests\FakeValues\A;
 
 use Rapid\Fsm\State;
 
-class FakeC extends State
+class FakeC extends FakeB
 {
 
 }

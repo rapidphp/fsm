@@ -267,6 +267,38 @@ class Context extends State
         return $state;
     }
 
+    public static function getStateAliasName(string $class): ?string
+    {
+        $stateName = array_search($class, static::states());
+
+        if (is_int($stateName)) {
+            return $class;
+        }
+
+        if (is_string($stateName)) {
+            return $stateName;
+        }
+
+        return false;
+    }
+
+    public static function getStateClass(string $name): ?string
+    {
+        $states = static::states();
+
+        if (isset($states[$name])) {
+            return $states[$name];
+        }
+
+        $index = array_search($name, $states);
+
+        if (is_int($index)) {
+            return $name;
+        }
+
+        return null;
+    }
+
 
     /**
      * @return array<class-string<State>>

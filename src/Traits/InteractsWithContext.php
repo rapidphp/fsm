@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Arr;
 use Rapid\Fsm\Context;
 use Rapid\Fsm\State;
-use Rapid\Fsm\StateMapper;
 use Rapid\Fsm\Support\Facades\Fsm;
 use Rapid\Laplus\Present\Present;
 
@@ -20,6 +19,9 @@ trait InteractsWithContext
 {
     use InteractsWithState;
 
+    /**
+     * @return class-string<Context>
+     */
     protected function contextClass(): string
     {
         throw new \Exception("Method [contextClass] is not implemented on [" . static::class . "]");
@@ -60,33 +62,78 @@ trait InteractsWithContext
         });
     }
 
-    public static function scopeWhereStateIs(Builder $query, string $class): void
+    public function scopeWhereStateIs(Builder $query, string $class, string $boolean = 'and', bool $not = false): void
     {
-        $query->where('current_state', StateMapper::getAlias($class));
+        $query->where('current_state', $not ? '!=' : '=', $this->contextClass()::getStateAliasName($class), boolean: $boolean);
     }
 
-    public static function scopeWhereStateIsIn(Builder $query, array $classes): void
+    public function scopeWhereStateIsNot(Builder $query, string $class, string $boolean = 'and'): void
     {
-        $query->whereIn('current_state', Arr::map($classes, fn($class) => StateMapper::getAlias($class)));
+        $query->whereStateIs($class, boolean: $boolean, not: true);
     }
 
-    public static function scopeWhereState(Builder $query, string $class): void
+    public function scopeOrWhereStateIs(Builder $query, string $class): void
+    {
+        $query->whereStateIs($class, boolean: 'or', not: false);
+    }
+
+    public function scopeOrWhereStateIsNot(Builder $query, string $class): void
+    {
+        $query->whereStateIs($class, boolean: 'or', not: true);
+    }
+
+    public function scopeWhereStateIsIn(Builder $query, array $classes, string $boolean = 'and', bool $not = false): void
+    {
+        $query->whereIn('current_state', Arr::map($classes, fn($class) => $this->contextClass()::getStateAliasName($class)), boolean: $boolean, not: $not);
+    }
+
+    public function scopeWhereStateIsNotIn(Builder $query, array $classes, string $boolean = 'and'): void
+    {
+        $query->whereStateIsIn($classes, boolean: $boolean, not: true);
+    }
+
+    public function scopeOrWhereStateIsIn(Builder $query, array $classes): void
+    {
+        $query->whereStateIsIn($classes, boolean: 'or', not: false);
+    }
+
+    public function scopeOrWhereStateIsNotIn(Builder $query, array $classes): void
+    {
+        $query->whereStateIsIn($classes, boolean: 'or', not: true);
+    }
+
+    public function scopeWhereState(Builder $query, string $class, string $boolean = 'and', bool $not = false): void
     {
         /** @var Context $context */
         $context = $query->getModel()->context;
 
         $aliases = [];
 
-        foreach ($context::states() as $state) {
+        foreach ($context::states() as $name => $state) {
             if (is_a($state, $class, true)) {
-                $aliases[] = StateMapper::getAlias($state);
+                $aliases[] = $this->contextClass()::getStateAliasName($state);
             }
         }
 
-        $query->whereIn('current_state', $aliases);
+        $query->whereIn('current_state', $aliases, boolean: $boolean, not: $not);
     }
 
-    public static function scopeWhereStateIn(Builder $query, array $classes): void
+    public function scopeWhereStateNot(Builder $query, string $class, string $boolean = 'and'): void
+    {
+        $query->whereState($class, boolean: $boolean, not: true);
+    }
+
+    public function scopeOrWhereState(Builder $query, string $class): void
+    {
+        $query->whereState($class, boolean: 'or', not: false);
+    }
+
+    public function scopeOrWhereStateNot(Builder $query, string $class): void
+    {
+        $query->whereState($class, boolean: 'or', not: true);
+    }
+
+    public function scopeWhereStateIn(Builder $query, array $classes, string $boolean = 'and', bool $not = false): void
     {
         /** @var Context $context */
         $context = $query->getModel()->context;
@@ -96,12 +143,27 @@ trait InteractsWithContext
         foreach ($context::states() as $state) {
             foreach ($classes as $class) {
                 if (is_a($state, $class, true)) {
-                    $aliases[] = StateMapper::getAlias($state);
+                    $aliases[] = $this->contextClass()::getStateAliasName($state);
                     break;
                 }
             }
         }
 
-        $query->whereIn('current_state', $aliases);
+        $query->whereIn('current_state', $aliases, boolean: $boolean, not: $not);
+    }
+
+    public function scopeWhereStateNotIn(Builder $query, array $classes, string $boolean = 'and'): void
+    {
+        $query->whereStateIn($classes, boolean: $boolean, not: true);
+    }
+
+    public function scopeOrWhereStateIn(Builder $query, array $classes): void
+    {
+        $query->whereStateIn($classes, boolean: 'or', not: false);
+    }
+
+    public function scopeOrWhereStateNotIn(Builder $query, array $classes): void
+    {
+        $query->whereStateIn($classes, boolean: 'or', not: true);
     }
 }
