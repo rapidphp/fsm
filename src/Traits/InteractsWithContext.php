@@ -45,21 +45,16 @@ trait InteractsWithContext
 
     public function state(): Attribute
     {
-        return Attribute::make(
-            get: function (): ?State {
-                return $this->context->getCurrentState();
-            },
-            set: function (string $value) {
-                $this->context->transitionTo($value);
-            },
-        );
+        return Attribute::get(function (): ?State {
+            return $this->context->getCurrentState();
+        })->withoutObjectCaching();
     }
 
     public function deepState(): Attribute
     {
         return Attribute::get(function (): ?State {
             return $this->context->getCurrentDeepState();
-        });
+        })->withoutObjectCaching();
     }
 
     public function scopeWhereStateIs(Builder $query, string $class, string $boolean = 'and', bool $not = false): void
@@ -69,17 +64,17 @@ trait InteractsWithContext
 
     public function scopeWhereStateIsNot(Builder $query, string $class, string $boolean = 'and'): void
     {
-        $query->whereStateIs($class, boolean: $boolean, not: true);
+        $this->scopeWhereStateIs($query, $class, boolean: $boolean, not: true);
     }
 
     public function scopeOrWhereStateIs(Builder $query, string $class): void
     {
-        $query->whereStateIs($class, boolean: 'or', not: false);
+        $this->scopeWhereStateIs($query, $class, boolean: 'or', not: false);
     }
 
     public function scopeOrWhereStateIsNot(Builder $query, string $class): void
     {
-        $query->whereStateIs($class, boolean: 'or', not: true);
+        $this->scopeWhereStateIs($query, $class, boolean: 'or', not: true);
     }
 
     public function scopeWhereStateIsIn(Builder $query, array $classes, string $boolean = 'and', bool $not = false): void
@@ -89,17 +84,17 @@ trait InteractsWithContext
 
     public function scopeWhereStateIsNotIn(Builder $query, array $classes, string $boolean = 'and'): void
     {
-        $query->whereStateIsIn($classes, boolean: $boolean, not: true);
+        $this->scopeWhereStateIsIn($query, $classes, boolean: $boolean, not: true);
     }
 
     public function scopeOrWhereStateIsIn(Builder $query, array $classes): void
     {
-        $query->whereStateIsIn($classes, boolean: 'or', not: false);
+        $this->scopeWhereStateIsIn($query, $classes, boolean: 'or', not: false);
     }
 
     public function scopeOrWhereStateIsNotIn(Builder $query, array $classes): void
     {
-        $query->whereStateIsIn($classes, boolean: 'or', not: true);
+        $this->scopeWhereStateIsIn($query, $classes, boolean: 'or', not: true);
     }
 
     public function scopeWhereState(Builder $query, string $class, string $boolean = 'and', bool $not = false): void
@@ -120,17 +115,17 @@ trait InteractsWithContext
 
     public function scopeWhereStateNot(Builder $query, string $class, string $boolean = 'and'): void
     {
-        $query->whereState($class, boolean: $boolean, not: true);
+        $this->scopeWhereState($query, $class, boolean: $boolean, not: true);
     }
 
     public function scopeOrWhereState(Builder $query, string $class): void
     {
-        $query->whereState($class, boolean: 'or', not: false);
+        $this->scopeWhereState($query, $class, boolean: 'or', not: false);
     }
 
     public function scopeOrWhereStateNot(Builder $query, string $class): void
     {
-        $query->whereState($class, boolean: 'or', not: true);
+        $this->scopeWhereState($query, $class, boolean: 'or', not: true);
     }
 
     public function scopeWhereStateIn(Builder $query, array $classes, string $boolean = 'and', bool $not = false): void
@@ -154,16 +149,16 @@ trait InteractsWithContext
 
     public function scopeWhereStateNotIn(Builder $query, array $classes, string $boolean = 'and'): void
     {
-        $query->whereStateIn($classes, boolean: $boolean, not: true);
+        $this->scopeWhereStateIn($query, $classes, boolean: $boolean, not: true);
     }
 
     public function scopeOrWhereStateIn(Builder $query, array $classes): void
     {
-        $query->whereStateIn($classes, boolean: 'or', not: false);
+        $this->scopeWhereStateIn($query, $classes, boolean: 'or', not: false);
     }
 
     public function scopeOrWhereStateNotIn(Builder $query, array $classes): void
     {
-        $query->whereStateIn($classes, boolean: 'or', not: true);
+        $this->scopeWhereStateIn($query, $classes, boolean: 'or', not: true);
     }
 }
