@@ -50,6 +50,16 @@ class FsmContextTest extends TestCase
         $this->assertTrue($record->context->getCurrentDeepState() === $record->context->getCurrentDeepState());
     }
 
+    public function test_getting_state_with_null_value()
+    {
+        $record = new FakeModel([
+            'current_state' => null,
+        ]);
+
+        $this->assertNull($record->state);
+        $this->assertNull($record->deepState);
+    }
+
     public function test_transition_will_change_the_state()
     {
         $record = new FakeModel([
@@ -62,6 +72,20 @@ class FsmContextTest extends TestCase
         $this->assertInstanceOf(FakeB::class, $newState);
         $this->assertSame(FakeB::class, $record->current_state);
         $this->assertTrue($newState === $record->state);
+    }
+
+    public function test_transition_to_null()
+    {
+        $record = new FakeModel([
+            'current_state' => FakeA::class,
+        ]);
+
+        $this->assertInstanceOf(FakeA::class, $record->state);
+
+        $newState = $record->context->transitionTo(null);
+        $this->assertNull($newState);
+        $this->assertSame(null, $record->current_state);
+        $this->assertNull($record->state);
     }
 
 }
