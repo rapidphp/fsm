@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 /**
  * @template T of Model
  */
-class State
+abstract class State
 {
     public ?Context $parent = null;
 

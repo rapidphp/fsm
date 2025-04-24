@@ -551,3 +551,44 @@ class EmailConfirmationController extends Controller
     }
 }
 ```
+
+
+## Linear context
+
+A linear context is a simple, linear FSM where each state is executed in sequence.
+
+This class provides you with a few helper methods that help you navigate between your states.
+
+```php
+class RegistrationContext extends LinearContext
+{
+    protected static array $states = [
+        'basic profile' => BasicProfileStep::class,
+        'phone' => PhoneStep::class,
+        'confirm code' => ConfirmCodeStep::class,
+        'accept' => AcceptStep::class,
+        'finished' => FinishedStep::class,
+    ];
+
+    protected static array $path = [
+        BasicProfileStep::class,
+        PhoneStep::class,
+        ConfirmCodeStep::class,
+        AcceptStep::class,
+    ];
+    
+    protected static string $endState = FinishedStep::class;
+}
+```
+
+The path variable specifies the execution order.
+
+Now you use these methods to move to the next and previous state:
+
+```php
+$this->transitionToNext();
+$this->transitionToPrevious();
+
+$this->useLog()->transitionToNext();
+$this->useLog()->transitionToPrevious();
+```
