@@ -1,5 +1,7 @@
 # Laravel Fsm
 
+![Finite state machine](docs/fsm.jpg)
+
 ## Installation
 
 ```shell
