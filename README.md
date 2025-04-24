@@ -109,6 +109,11 @@ public static function states(): array
 }
 ```
 
+**Note: Notice that we don't have anything for edges.
+In fact, adding edges only adds complexity to the application.
+We can handle the input with a controller/service, and the destination by passing
+the destination state name.**
+
 ### Transitions
 If you want the current state to change, you can do so simply with transitionTo.
 
