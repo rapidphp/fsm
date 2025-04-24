@@ -125,6 +125,35 @@ class FirstState extends State
 }
 ```
 
+States support events:
+
+```php
+class FirstState extends State
+{
+    public function onEnter(): void
+    {
+    }
+
+    public function onLeave(): void
+    {
+    }
+}
+```
+
+You can access the context with the `$parent` property.
+
+```php
+class FooStep extends State
+{
+    public function onEnter(): void
+    {
+        if (!config('foo.enabled')) {
+            $this->parent->transitionToNext();
+        }
+    }
+}
+```
+
 
 ## Nested context
 You can also create nested FSMs.
@@ -178,6 +207,19 @@ public function onEnter(): void
 }
 ```
 
+In a subcontext, you can also access the parent context:
+
+```php
+class SubContext extends Context
+{
+    public function finish()
+    {
+        $this->transitionTo(Finished::class);           // End of this subcontext
+        $this->parent->transitionTo(BarAccept::class);  // Changing the parent context state
+    }
+}
+```
+
 
 ## Start a fsm
 
@@ -213,7 +255,7 @@ class MyContext extends Context
 
 
 ## Log
-Inherit from the Logger interface or the EmptyLogger class to customize your logging.
+Inherit from the `Logger` interface or the `EmptyLogger` class to customize your logging.
 
 ```php
 class MyLogger extends EmptyLogger
@@ -238,20 +280,20 @@ class MyLogger extends EmptyLogger
 
 ### Use log
 
-By default, if you perform the transitionTo operation, no logging occurs:
+By default, if you perform the `transitionTo` operation, no logging occurs:
 
 ```php
 $context->transitionTo(WaitingForResponse::class); // Without log
 ```
 
-To use the log, you must first use useLog and then transitionTo.
+To use the log, you must first use `useLog` and then `transitionTo`.
 
 ```php
 $context->useLog()->transitionTo(WaitingForResponse::class); // With log
 $context->transitionTo(WaitingForResponse::class, $context->useLog()); // With log
 ```
 
-You can even pass properties with the PendingLog class.
+You can even pass properties with the `PendingLog` class.
 
 ```php
 $context->useLog()->with(['status' => 'approved'])->transitionTo(ProfileStep::class);
@@ -271,7 +313,7 @@ class MyLogger extends EmptyLogger
 }
 ```
 
-Or even customize the PendingLog class entirely and add new functions:
+Or even customize the `PendingLog` class entirely and add new functions:
 
 ```php
 class RegistrationPendingLog extends PendingLog
@@ -302,7 +344,7 @@ class RegistrationLogger extends EmptyLogger
     public function transition(PendingLog $log): void
     {
         if ($log instanceof RegistrationPendingLog && isset($log->withNotification)) {
-            auth()->user()->notify(
+            UserService::getAdmin()->notify(
                 new MessageNotification($log->withNotification),
             );
         }
@@ -312,13 +354,13 @@ class RegistrationLogger extends EmptyLogger
 
 ```php
 $context->useLog()
-    ->withNotification("Registration is completed!")
+    ->withNotification("A new user registered successfully!")
     ->transitionTo(Completed::class);
 ```
 
 ### Force log
 
-If you need your transitions to always be logged, just change the $forceLog variable to true:
+If you need your transitions to always be logged, just change the `$forceLog` variable to true:
 
 ```php
 class MyContext extends Context
@@ -335,13 +377,13 @@ $context->transitionTo(Completed::class); // Now also uses logs
 ## Authorization
 
 Most of the time you need to check if this FSM is in the correct state or not.
-In these cases we use the authorize method.
+In these cases we use the `authorize` method.
 
 ```php
 $context->authorize(FooState::class);
 ```
 
-Or we can use the is method to just get the true/false value.
+Or we can use the `is` method to just get the true/false value.
 
 ```php
 if ($context->is(FooState::class)) {
