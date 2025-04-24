@@ -368,6 +368,11 @@ class Context extends State
         Fsm::authorize($this, $state, $compare, $status);
     }
 
+    public function is(string|array $state, int $compare = FsmManager::DEFAULT): bool
+    {
+        return Fsm::is($this, $state, $compare);
+    }
+
     public function __get(string $name)
     {
         return match ($name) {
