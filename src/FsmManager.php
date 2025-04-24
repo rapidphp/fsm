@@ -4,7 +4,6 @@ namespace Rapid\Fsm;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Rapid\Fsm\Configuration\ContextConfiguration;
 use Rapid\Fsm\Logging\Logger;
 use WeakMap;

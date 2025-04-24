@@ -14,11 +14,7 @@ interface ContextConfiguration
 
     public function compare(): ?int;
 
-    public function denyStatus(): ?int;
-
     public function debugEnabled(): bool;
-
-    public function defaultLog(): ?PendingLog;
 
     public function useContextIdInRoute(): bool;
 

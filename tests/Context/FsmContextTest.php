@@ -84,7 +84,7 @@ class FsmContextTest extends TestCase
 
         $newState = $record->context->transitionTo(null);
         $this->assertNull($newState);
-        $this->assertSame(null, $record->current_state);
+        $this->assertNull($record->current_state);
         $this->assertNull($record->state);
     }
 

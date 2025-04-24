@@ -26,19 +26,9 @@ class DefaultContextConfiguration implements ContextConfiguration
         return null;
     }
 
-    public function denyStatus(): ?int
-    {
-        return null;
-    }
-
     public function debugEnabled(): bool
     {
         return config('fsm.debug');
-    }
-
-    public function defaultLog(): ?PendingLog
-    {
-        return null;
     }
 
     public function useContextIdInRoute(): bool

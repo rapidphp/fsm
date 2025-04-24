@@ -28,6 +28,7 @@ class Context extends State
     protected static string $configurationClass;
     protected static string $loggerClass;
     protected static array $states;
+    protected static bool $forceLog = false;
 
     public function __construct()
     {
@@ -161,7 +162,9 @@ class Context extends State
 
         static::fire(FsmEvents::Transition, $this, $from, $to);
 
-        $log ??= static::configuration()->defaultLog();
+        if (is_null($log) && static::$forceLog) {
+            $log = $this->useLog();
+        }
 
         if (isset($log)) {
             $log->fromState = $from;
