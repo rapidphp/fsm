@@ -592,3 +592,71 @@ $this->transitionToPrevious();
 $this->useLog()->transitionToNext();
 $this->useLog()->transitionToPrevious();
 ```
+
+
+## Api
+
+You can define your APIs within the context.
+
+Just add this code to your root path (such as web.php or api.php):
+
+```php
+MyContext::routes();
+```
+
+|        Attribute        | In contexts | In states | Need to |                   Description                    |
+|:-----------------------:|:-----------:|:---------:|:-------:|:------------------------------------------------:|
+|           Api           |     yes     |    yes    |         |             Introducing a new route              |
+|      WithoutRecord      |     yes     |    no     |   Api   |  Eliminates the need for records from the route  |
+| WithMiddleware (class)  |     yes     |    no     |         |          Adds middleware to all routes           |
+| WithMiddleware (method) |     yes     |    yes    |   Api   |           Adds middleware to the root            |
+|       OverrideApi       |     no      |    yes    |         |             Overrides a defined API              |
+|         OnState         |     yes     |    yes    |   Api   |          Checks that the state matches           |
+|     IntoTransaction     |     yes     |    yes    |   Api   | Executes the function in a database transaction. |
+
+```php
+#[WithMiddleware(['auth'])]
+class MyContext extends Context
+{
+    #[Api, WithoutRecord]
+    public function initialize()
+    {
+        $this->createRecord([
+            'user_id' => auth()->id(),
+        ]);
+        
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'id' => $this->record->id,
+            ],
+        ]);
+    }
+}
+```
+
+Use the `Api` attribute to specify which functions should be defined in routes.
+
+Function inputs are exactly the same as controllers.
+
+```php
+#[Api, WithoutRecord]
+public function initialize()
+{
+}
+
+#[Api]
+public function foo(Request $request, MyService $service)
+{
+}
+
+#[Api('users/{user:id}')]
+public function showUser(User $user)
+{
+}
+
+#[Api('users/{user:id}', method: 'POST', name: 'update_the_user', middleware: ['signed'])]
+public function updateUser(User $user)
+{
+}
+```
