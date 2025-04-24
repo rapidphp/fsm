@@ -197,7 +197,7 @@ class FsmManager
             return null;
         }
 
-        $state = StateMapper::newState($alias);
+        $state = StateMapper::newState($class);
 
         if ($state === null) {
             return null;

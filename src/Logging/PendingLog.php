@@ -13,7 +13,7 @@ class PendingLog
     public array $additional = [];
 
     public function __construct(
-        public Context $context,
+        public readonly Context $context,
     )
     {
     }
