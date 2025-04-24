@@ -143,7 +143,7 @@ class FsmQueryBuilderTest extends TestCase
             'column' => 'current_state',
             'values' => [FakeB::class, 'c'],
             'boolean' => 'or',
-        ], $query->getQuery()->wheres[1]['query']->wheres[0]['query']->wheres[0]);
+        ], $query->getQuery()->wheres[1]['query']->wheres[0]);
 
         $query = FakeModel::query()
             ->whereStateNot(FakeA::class)
@@ -161,7 +161,7 @@ class FsmQueryBuilderTest extends TestCase
             'column' => 'current_state',
             'values' => [FakeB::class, 'c'],
             'boolean' => 'or',
-        ], $query->getQuery()->wheres[1]['query']->wheres[0]['query']->wheres[0]);
+        ], $query->getQuery()->wheres[1]['query']->wheres[0]);
     }
 
     public function test_add_logical_conditions_for_where_state_is()
@@ -184,7 +184,7 @@ class FsmQueryBuilderTest extends TestCase
             'operator' => '=',
             'value' => FakeB::class,
             'boolean' => 'or',
-        ], $query->getQuery()->wheres[1]['query']->wheres[0]['query']->wheres[0]);
+        ], $query->getQuery()->wheres[1]['query']->wheres[0]);
 
         $query = FakeModel::query()
             ->whereStateIsNot(FakeA::class)
@@ -204,6 +204,6 @@ class FsmQueryBuilderTest extends TestCase
             'operator' => '!=',
             'value' => FakeB::class,
             'boolean' => 'or',
-        ], $query->getQuery()->wheres[1]['query']->wheres[0]['query']->wheres[0]);
+        ], $query->getQuery()->wheres[1]['query']->wheres[0]);
     }
 }

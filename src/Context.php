@@ -21,7 +21,7 @@ use Rapid\Fsm\Traits\HasEvents;
  * @property null|State $deepState
  * @extends State<T>
  */
-abstract class Context extends State
+class Context extends State
 {
     use HasEvents;
 
